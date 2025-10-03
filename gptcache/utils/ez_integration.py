@@ -1,4 +1,4 @@
-from gptcache.core import Cache
+from gptcache.core import cache, Cache
 from gptcache.adapter.langchain_models import LangChainLLMs
 from gptcache.utils.cache_func import cache_selectively
 def get_content_func(data, **_):

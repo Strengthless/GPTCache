@@ -14,8 +14,7 @@ from gptcache.similarity_evaluation import SimilarityEvaluation
 from gptcache.utils import import_openai
 from gptcache.utils.cache_func import cache_all
 from gptcache.utils.log import gptcache_log
-
-
+from gptcache.utils.response_text import openai_response_text, ollama_response_text
 class Cache:
     """GPTCache core object.
 
@@ -55,6 +54,7 @@ class Cache:
         post_func=None,
         config=Config(),
         next_cache=None,
+        llm_provider=None
     ):
         """Pass parameters to initialize GPTCache.
 
@@ -78,6 +78,9 @@ class Cache:
         self.post_process_messages_func = post_func if post_func else post_process_messages_func
         self.config = config
         self.next_cache = next_cache
+        self.llm_provider = llm_provider
+        if llm_provider:  
+            self.set_response_text()
 
         @atexit.register
         def close():
@@ -86,6 +89,14 @@ class Cache:
             except Exception as e:  # pylint: disable=W0703
                 if not os.getenv("IS_CI"):
                     gptcache_log.error(e)
+
+    def set_response_text(self):
+        if self.llm_provider == "openai":
+            self.response_text = openai_response_text
+        elif self.llm_provider == "ollama":
+            self.response_text = ollama_response_text
+        else:
+            raise ValueError(f"Unsupported LLM provider: {self.llm_provider}")
 
     def import_data(self, questions: List[Any], answers: List[Any], session_ids: Optional[List[Optional[str]]] = None) -> None:
         """Import data to GPTCache
@@ -116,7 +127,7 @@ class Cache:
         import_openai()
         import openai  # pylint: disable=C0415
 
-        openai.api_key = os.getenv("OPENAI_API_KEY")
+        #openai.api_key = 
 
     @staticmethod
     def set_azure_openai_key():

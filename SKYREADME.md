@@ -4,7 +4,7 @@
 
 ## Quick Setup
 
-`pip install langchain_ollama`
+`uv pip install langchain_ollama transformers openai==0.28.1 langchain onnxruntime==1.21.1`
 ```bash
 llm = OllamaLLM(
     model="llama3.2:1b", # choose your own model, make sure it has been installed locally
