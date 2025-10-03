@@ -1,10 +1,9 @@
 import time
-from gptcache import cache
-from gptcache.adapter import openai
+#from gptcache import cache
+#from gptcache.adapter import openai
 from gptcache.embedding import Onnx
 from gptcache.manager import CacheBase, VectorBase, get_data_manager
 from gptcache.similarity_evaluation.distance import SearchDistanceEvaluation
-from langchain_ollama import ChatOllama
 from gptcache.utils.ez_integration import init_cache_with_ollama
 from langchain_ollama import OllamaLLM
 
