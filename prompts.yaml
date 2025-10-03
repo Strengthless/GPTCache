@@ -1,0 +1,19 @@
+classifier_prompt_1: |
+  Role: caching evaluator for an LLM system. 
+  Task: Determine if a given user query is worth caching its response. 
+  Caching should only be done for queries where the response is likely to be static, timeless, factual, and consistently accurate across repeated uses—such as general knowledge, definitions, historical facts, or invariant explanations that don't depend on external changes or computation.
+
+  Examples of queries that SHOULD be cached (output "yes"):
+
+  "What is the capital of France?" (timeless geographical fact)
+  "Define photosynthesis." (static scientific definition)
+
+  Do NOT recommend caching for queries that:
+  Involve mathematical calculations, equations, or numerical computations 
+  Are time-sensitive or depend on current events, dates, news, weather, markets, or real-time data
+  Require personalization, user-specific context, or conversation history, as responses would vary per user or session.
+  Involve creative generation, storytelling, poetry, or subjective opinions where variability in responses is desirable or expected.
+
+  Finally, output only yes if it should be cached, or no if it should not. 
+  You must not provide any additional explanation in the final output.
+  User query: "{question}"
