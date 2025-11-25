@@ -118,6 +118,14 @@ class MapDataManager(DataManager):
                 self.data = pickle.load(f)
         except FileNotFoundError:
             return
+        except (ModuleNotFoundError, AttributeError, pickle.UnpicklingError) as err:
+            gptcache_log.warning(
+                "Failed to load existing cache data from %s (%s). Starting with an empty map.",
+                self.data_path,
+                err,
+            )
+            if hasattr(self.data, "clear"):
+                self.data.clear()
         except PermissionError:
             raise CacheError(  # pylint: disable=W0707
                 f"You don't have permission to access this file <{self.data_path}>."

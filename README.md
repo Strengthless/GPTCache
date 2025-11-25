@@ -253,6 +253,36 @@ More Docs：
 - [Examples, learn better custom caching](examples/README.md)
 - [Distributed Caching and Horizontal Scaling ](docs/horizontal-scaling-usage.md)
 
+## 🌲 Semantic Forest (Experimental)
+
+Long conversations often suffer from semantic dilution and topic drift, which makes a single embedding of the entire history unreliable. GPTCache now ships with an experimental *semantic forest* structure that embeds every user query individually, threads the queries into semantic trees, and only returns cached answers when the current chunk of queries matches a full path in a tree.
+
+- **Per-query embeddings** mitigate dilution by keeping each user turn as an independent semantic node.
+- **Tree growth** automatically forks a new root when the conversation jumps to a new topic, and reuses existing branches when the dialogue stays on track.
+- **Exact path verification** ensures that cached responses are used only when the latest semantic chunk matches every level in the tree.
+
+Enable the forest after calling `cache.init()` (or let the helper take care of init) and then use the usual adapters:
+
+```python
+from gptcache import cache
+from gptcache.semantic_forest import enable_semantic_forest
+from gptcache.embedding import Onnx
+
+onnx = Onnx()
+cache.init()
+enable_semantic_forest(
+    cache,
+    data_path="./semantic_forest.pkl",
+    chunk_size=4,
+    node_match_threshold=0.85,
+    base_embedding_func=onnx.to_embeddings,
+)
+
+# calls to openai.ChatCompletion (or other adapters) now leverage semantic trees
+```
+
+You can also wire the pieces manually by instantiating `SemanticForestChunker`, `SemanticForestEmbedder`, `SemanticForestDataManager`, and `SemanticForestEvaluation` if you need deeper customization.
+
 ## 🎓 Bootcamp
 
 - GPTCache with **LangChain**
