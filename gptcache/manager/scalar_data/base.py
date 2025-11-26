@@ -66,6 +66,7 @@ class CacheData:
     question: Union[str, Question]
     answers: List[Answer]
     embedding_data: Optional[np.ndarray] = None
+    bm25_data: Optional[dict] = None
     session_id: Optional[str] = None
     create_on: Optional[datetime] = None
     last_access: Optional[datetime] = None
@@ -75,6 +76,7 @@ class CacheData:
         question,
         answers,
         embedding_data=None,
+        bm25_data=None,
         session_id=None,
         create_on=None,
         last_access=None,
@@ -91,6 +93,7 @@ class CacheData:
             else:
                 self.answers.append(Answer(answer=data))
         self.embedding_data = embedding_data
+        self.bm25_data = bm25_data
         self.session_id = session_id
         self.create_on = create_on
         self.last_access = last_access

@@ -16,9 +16,9 @@ def cache_selectively(*_, **kwargs):
         response = llm(prompt)
         response_cleaned = response.lower().replace(" ","").replace("\"","")
         if response_cleaned == "yes":
-            print(f"cached {question}")
+            #print(f"cached {question}")
             return True
         else:
-            print(f"skipped caching {question}")
+            #print(f"skipped caching {question}")
             return False
     return False

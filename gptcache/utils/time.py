@@ -7,6 +7,14 @@ def time_cal(func, func_name=None, report_func=None):
     def inner(*args, **kwargs):
         time_start = time.time()
         res = func(*args, **kwargs)
+        # if func_name == "query_embed":
+        #     try:
+        #         first = next(res)
+        #         print(f"✅ Generator working! First embedding: {first}")
+        #         print(f"   Keys: {list(first.keys())}" if isinstance(first, dict) else "")
+        #     except StopIteration:
+        #         print("❌ Empty generator")
+        
         delta_time = time.time() - time_start
         if cache.config.log_time_func:
             cache.config.log_time_func(
@@ -15,5 +23,5 @@ def time_cal(func, func_name=None, report_func=None):
         if report_func is not None:
             report_func(delta_time)
         return res
-
+    
     return inner

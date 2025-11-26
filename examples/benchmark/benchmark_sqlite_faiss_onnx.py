@@ -11,7 +11,7 @@ from gptcache.similarity_evaluation.distance import SearchDistanceEvaluation
 
 
 def run():
-    with open("mock_data.json", "r") as mock_file:
+    with open(r"C:\\Users\\Sky\\OneDrive\\Desktop\\FYP\\GPTCache\\examples\\benchmark\\mock_data.json", "r") as mock_file:
         mock_data = json.load(mock_file)
 
     embedding_onnx = EmbeddingOnnx()

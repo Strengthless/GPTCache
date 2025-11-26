@@ -15,6 +15,7 @@ from gptcache.utils import import_openai
 from gptcache.utils.cache_func import cache_all
 from gptcache.utils.log import gptcache_log
 from gptcache.utils.response_text import openai_response_text, ollama_response_text
+from fastembed import SparseTextEmbedding
 class Cache:
     """GPTCache core object.
 
@@ -54,7 +55,8 @@ class Cache:
         post_func=None,
         config=Config(),
         next_cache=None,
-        llm_provider=None
+        llm_provider=None,
+        bm25=False
     ):
         """Pass parameters to initialize GPTCache.
 
@@ -82,6 +84,9 @@ class Cache:
         if llm_provider:  
             self.set_response_text()
 
+        if bm25:
+            self.bm25_embedding_model = SparseTextEmbedding("Qdrant/bm25")
+
         @atexit.register
         def close():
             try:
@@ -106,11 +111,13 @@ class Cache:
         :param session_ids: list of the session id.
         :return: None
         """
-
+        bm25_datas=[list(self.bm25_embedding_model.query_embed(question)) for question in questions]
+        
         self.data_manager.import_data(
             questions=questions,
             answers=answers,
             embedding_datas=[self.embedding_func(question) for question in questions],
+            bm25_datas=bm25_datas ,
             session_ids=session_ids if session_ids else [None for _ in range(len(questions))],
         )
 

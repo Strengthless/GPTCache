@@ -80,7 +80,7 @@ def temperature_softmax(messages: List[Any], scores: List[float], temperature: f
             scores = [0.9, 0.5, 0.1]
             answer = temperature_softmax(messages, scores, temperature=0.5)
     """
-
+    #print(messages, "feed to softmax")
     if temperature > 0:
         scores = softmax([x / temperature for x in scores])
         return numpy.random.choice(messages, size=1, p=scores)[0]

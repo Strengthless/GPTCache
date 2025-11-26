@@ -6,6 +6,8 @@ import cachetools
 import numpy as np
 import requests
 
+from fastembed import SparseTextEmbedding
+
 from gptcache.manager.eviction import EvictionBase
 from gptcache.manager.eviction.distributed_cache import NoOpEviction
 from gptcache.manager.eviction_manager import EvictionManager
@@ -20,7 +22,7 @@ from gptcache.manager.scalar_data.base import (
 from gptcache.manager.vector_data.base import VectorBase, VectorData
 from gptcache.utils.error import CacheError, ParamError
 from gptcache.utils.log import gptcache_log
-
+from qdrant_client import QdrantClient, models
 
 class DataManager(metaclass=ABCMeta):
     """DataManager manage the cache data, including save and search"""
@@ -251,7 +253,7 @@ class SSDataManager(DataManager):
         if self.eviction_manager.check_evict():
             self.eviction_manager.delete()
 
-    def save(self, question, answer, embedding_data, **kwargs):
+    def save(self, question, answer, embedding_data, bm25,  **kwargs):
         """Save the data and vectors to cache and vector storage.
 
         :param question: question data.
@@ -270,9 +272,13 @@ class SSDataManager(DataManager):
                 data_manager = get_data_manager(CacheBase('sqlite'), VectorBase('faiss', dimension=128))
                 data_manager.save('hello', 'hi', np.random.random((128, )).astype('float32'))
         """
+        saved_embeddings = list(bm25)  
         session = kwargs.get("session", None)
         session_id = session.name if session else None
-        self.import_data([question], [answer], [embedding_data], [session_id])
+        try:
+            self.import_data([question], [answer], [embedding_data], saved_embeddings, [session_id])
+        except Exception as e:
+            print("import data error: ", e)
 
     def _process_answer_data(self, answers: Union[Answer, List[Answer]]):
         if isinstance(answers, Answer):
@@ -302,39 +308,63 @@ class SSDataManager(DataManager):
         questions: List[Any],
         answers: List[Answer],
         embedding_datas: List[Any],
+        bm25_datas: List[Any],  
         session_ids: List[Optional[str]],
     ):
+        
         if (
             len(questions) != len(answers)
             or len(questions) != len(embedding_datas)
             or len(questions) != len(session_ids)
         ):
             raise ParamError("Make sure that all parameters have the same length")
+        
+        if not bm25_datas or all(b is None for b in bm25_datas):
+            sparse_text_embedding = SparseTextEmbedding()
+            bm25_datas = [sparse_text_embedding.encode(q) for q in questions]
+        
         cache_datas = []
+        # Normalize the vector embeddings
         embedding_datas = [
             normalize(embedding_data) for embedding_data in embedding_datas
         ]
         for i, embedding_data in enumerate(embedding_datas):
+            # Process the answer data
             if self.o is not None and not isinstance(answers[i], str):
                 ans = self._process_answer_data(answers[i])
             else:
                 ans = answers[i]
 
+            # Create CacheData objects for each question-answer pair
             cache_datas.append(
                 CacheData(
                     question=self._process_question_data(questions[i]),
                     answers=ans,
+                    bm25_data=bm25_datas[i],
                     embedding_data=embedding_data.astype("float32"),
                     session_id=session_ids[i],
                 )
             )
+            
+        
+        # Insert scalar data into the scalar storage
         ids = self.s.batch_insert(cache_datas)
-        self.v.mul_add(
-            [
-                VectorData(id=ids[i], data=embedding_data)
-                for i, embedding_data in enumerate(embedding_datas)
-            ]
+        
+        # Add both vector embeddings and BM25 embeddings to the vector store
+        vector_datas = [
+        VectorData(
+            id=ids[i],
+            data={
+                "embedding": embedding_data.tolist(),  # Dense as list
+                "bm25": models.SparseVector(**bm25.as_object())  # SparseVector object
+            }
         )
+        for i, embedding_data in enumerate(embedding_datas)
+        for bm25 in [bm25_datas[i][0] if isinstance(bm25_datas[i], list) else bm25_datas[i]]  # Get the SparseEmbedding
+    ]
+    
+        self.v.mul_add(vector_datas)
+        #print("added ",questions, answers)
         self.eviction_base.put(ids)
 
     def get_scalar_data(self, res_data, **kwargs) -> Optional[CacheData]:
@@ -366,10 +396,12 @@ class SSDataManager(DataManager):
     def hit_cache_callback(self, res_data, **kwargs):
         self.eviction_base.get(res_data[1])
 
-    def search(self, embedding_data, **kwargs):
+    def search(self, embedding_data, bm25=None, **kwargs):
         embedding_data = normalize(embedding_data)
         top_k = kwargs.get("top_k", -1)
-        return self.v.search(data=embedding_data, top_k=top_k)
+       
+        #return self.v.search(data=embedding_data, top_k=top_k)
+        return self.v.search(data=embedding_data, bm25=bm25, top_k=top_k)
 
     def flush(self):
         self.s.flush()

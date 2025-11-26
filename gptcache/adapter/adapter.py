@@ -7,7 +7,7 @@ from gptcache.processor.post import temperature_softmax, LlmVerifier
 from gptcache.utils.error import NotInitError
 from gptcache.utils.log import gptcache_log
 from gptcache.utils.time import time_cal
-
+from fastembed import SparseTextEmbedding
 
 def adapt(llm_handler, cache_data_convert, update_cache_callback, *args, **kwargs):
     """Adapt to different llm
@@ -34,6 +34,8 @@ def adapt(llm_handler, cache_data_convert, update_cache_callback, *args, **kwarg
     cache_enable = chat_cache.cache_enable_func(*args, **kwargs)
     context = kwargs.pop("cache_context", {})
     embedding_data = None
+    bm25_embedding = []
+    bm25_embedding_model = SparseTextEmbedding("Qdrant/bm25")
     # you want to retry to send the request to chatgpt when the cache is negative
 
     if 0 < temperature < 2:
@@ -80,6 +82,12 @@ def adapt(llm_handler, cache_data_convert, update_cache_callback, *args, **kwarg
             func_name="embedding",
             report_func=chat_cache.report.embedding,
         )(pre_embedding_data, extra_param=context.get("embedding_func", None))
+        bm25_embedding = time_cal(
+        bm25_embedding_model.query_embed,
+        func_name="query_embed",
+        report_func=chat_cache.report.embedding,  
+    )(pre_embedding_data)
+    bm25_embeddings = list(bm25_embedding)  
     if cache_enable and not cache_skip:
         search_data_list = time_cal(
             chat_cache.data_manager.search,
@@ -87,13 +95,12 @@ def adapt(llm_handler, cache_data_convert, update_cache_callback, *args, **kwarg
             report_func=chat_cache.report.search,
         )(
             embedding_data,
+            bm25_embeddings,
             extra_param=context.get("search_func", None),
             top_k=kwargs.pop("top_k", 5)
             if (user_temperature and not user_top_k)
             else kwargs.pop("top_k", -1),
         )
-        if search_data_list is None:
-            search_data_list = []
         cache_answers = []
         similarity_threshold = chat_cache.config.similarity_threshold
         min_rank, max_rank = chat_cache.similarity_evaluation.range()
@@ -105,76 +112,83 @@ def adapt(llm_handler, cache_data_convert, update_cache_callback, *args, **kwarg
             if rank_threshold < min_rank
             else rank_threshold
         )
+        #print(search_data_list)
         for search_data in search_data_list:
-            cache_data = time_cal(
-                chat_cache.data_manager.get_scalar_data,
-                func_name="get_data",
-                report_func=chat_cache.report.data,
-            )(
-                search_data,
-                extra_param=context.get("get_scalar_data", None),
-                session=session,
-            )
-            if cache_data is None:
-                continue
-
-            # cache consistency check
-            if chat_cache.config.data_check:
-                is_healthy = cache_health_check(
-                    chat_cache.data_manager.v,
-                    {
-                        "embedding": cache_data.embedding_data,
-                        "search_result": search_data,
-                    },
+            score, cache_id = search_data
+            # Only accept cache hit if score exceeds threshold
+            if score >= rank_threshold:
+                #print(f"Cache HIT: score={score}, threshold={rank_threshold}")
+                cache_data = time_cal(
+                    chat_cache.data_manager.get_scalar_data,
+                    func_name="get_data",
+                    report_func=chat_cache.report.data,
+                )(
+                    search_data,
+                    extra_param=context.get("get_scalar_data", None),
+                    session=session,
                 )
-                if not is_healthy:
+                if cache_data is None:
                     continue
+                
+                # cache consistency check
+                if chat_cache.config.data_check:
+                    is_healthy = cache_health_check(
+                        chat_cache.data_manager.v,
+                        {
+                            "embedding": cache_data.embedding_data,
+                            "search_result": search_data,
+                        },
+                    )
+                    if not is_healthy:
+                        continue
 
-            if "deps" in context and hasattr(cache_data.question, "deps"):
-                eval_query_data = {
-                    "question": context["deps"][0]["data"],
-                    "embedding": None,
-                }
-                eval_cache_data = {
-                    "question": cache_data.question.deps[0].data,
-                    "answer": cache_data.answers[0].answer,
-                    "search_result": search_data,
-                    "cache_data": cache_data,
-                    "embedding": None,
-                }
-            else:
-                eval_query_data = {
-                    "question": pre_store_data,
-                    "embedding": embedding_data,
-                }
+                if "deps" in context and hasattr(cache_data.question, "deps"):
+                    eval_query_data = {
+                        "question": context["deps"][0]["data"],
+                        "embedding": None,
+                    }
+                    eval_cache_data = {
+                        "question": cache_data.question.deps[0].data,
+                        "answer": cache_data.answers[0].answer,
+                        "search_result": search_data,
+                        "cache_data": cache_data,
+                        "embedding": None,
+                    }
+                else:
+                    eval_query_data = {
+                        "question": pre_store_data,
+                        "embedding": embedding_data,
+                    }
 
-                eval_cache_data = {
-                    "question": cache_data.question,
-                    "answer": cache_data.answers[0].answer,
-                    "search_result": search_data,
-                    "cache_data": cache_data,
-                    "embedding": cache_data.embedding_data,
-                }
-            rank = time_cal(
-                chat_cache.similarity_evaluation.evaluation,
-                func_name="evaluation",
-                report_func=chat_cache.report.evaluation,
-            )(
-                eval_query_data,
-                eval_cache_data,
-                extra_param=context.get("evaluation_func", None),
-            )
-            gptcache_log.debug(
-                "similarity: [user question] %s, [cache question] %s, [value] %f",
-                pre_store_data,
-                cache_data.question,
-                rank,
-            )
-            if rank_threshold <= rank:
-                cache_answers.append(
-                    (float(rank), cache_data.answers[0].answer, search_data, cache_data)
+                    eval_cache_data = {
+                        "question": cache_data.question,
+                        "answer": cache_data.answers[0].answer,
+                        "search_result": search_data,
+                        "cache_data": cache_data,
+                        "embedding": cache_data.embedding_data,
+                    }
+                rank = time_cal(
+                    chat_cache.similarity_evaluation.evaluation,
+                    func_name="evaluation",
+                    report_func=chat_cache.report.evaluation,
+                )(
+                    eval_query_data,
+                    eval_cache_data,
+                    extra_param=context.get("evaluation_func", None),
                 )
-                chat_cache.data_manager.hit_cache_callback(search_data)
+                gptcache_log.debug(
+                    "similarity: [user question] %s, [cache question] %s, [value] %f",
+                    pre_store_data,
+                    cache_data.question,
+                    rank,
+                )
+                if rank_threshold <= rank:
+                    cache_answers.append(
+                        (float(rank), cache_data.answers[0].answer, search_data, cache_data)
+                    )
+                    chat_cache.data_manager.hit_cache_callback(search_data)
+            # else:
+            #     print(f"Cache MISS: score={score}, threshold={rank_threshold}")
         cache_answers = sorted(cache_answers, key=lambda x: x[0], reverse=True)
         answers_dict = dict((d[1], d) for d in cache_answers)
         if len(cache_answers) != 0:
@@ -260,6 +274,7 @@ def adapt(llm_handler, cache_data_convert, update_cache_callback, *args, **kwarg
                     question = pre_store_data
                 else:
                     question.content = pre_store_data
+
                 time_cal(
                     chat_cache.data_manager.save,
                     func_name="save",
@@ -268,6 +283,7 @@ def adapt(llm_handler, cache_data_convert, update_cache_callback, *args, **kwarg
                     question,
                     handled_llm_data,
                     embedding_data,
+                    bm25=bm25_embeddings,
                     extra_param=context.get("save_func", None),
                     session=session,
                 )
@@ -370,8 +386,6 @@ async def aadapt(
             if (user_temperature and not user_top_k)
             else kwargs.pop("top_k", -1),
         )
-        if search_data_list is None:
-            search_data_list = []
         cache_answers = []
         similarity_threshold = chat_cache.config.similarity_threshold
         min_rank, max_rank = chat_cache.similarity_evaluation.range()
@@ -384,63 +398,69 @@ async def aadapt(
             else rank_threshold
         )
         for search_data in search_data_list:
-            cache_data = time_cal(
-                chat_cache.data_manager.get_scalar_data,
-                func_name="get_data",
-                report_func=chat_cache.report.data,
-            )(
-                search_data,
-                extra_param=context.get("get_scalar_data", None),
-                session=session,
-            )
-            if cache_data is None:
-                continue
-
-            if "deps" in context and hasattr(cache_data.question, "deps"):
-                eval_query_data = {
-                    "question": context["deps"][0]["data"],
-                    "embedding": None,
-                }
-                eval_cache_data = {
-                    "question": cache_data.question.deps[0].data,
-                    "answer": cache_data.answers[0].answer,
-                    "search_result": search_data,
-                    "cache_data": cache_data,
-                    "embedding": None,
-                }
-            else:
-                eval_query_data = {
-                    "question": pre_store_data,
-                    "embedding": embedding_data,
-                }
-
-                eval_cache_data = {
-                    "question": cache_data.question,
-                    "answer": cache_data.answers[0].answer,
-                    "search_result": search_data,
-                    "cache_data": cache_data,
-                    "embedding": cache_data.embedding_data,
-                }
-            rank = time_cal(
-                chat_cache.similarity_evaluation.evaluation,
-                func_name="evaluation",
-                report_func=chat_cache.report.evaluation,
-            )(
-                eval_query_data,
-                eval_cache_data,
-                extra_param=context.get("evaluation_func", None),
-            )
-            gptcache_log.debug(
-                "similarity: [user question] %s, [cache question] %s, [value] %f",
-                pre_store_data,
-                cache_data.question,
-                rank,
-            )
-            if rank_threshold <= rank:
-                cache_answers.append(
-                    (float(rank), cache_data.answers[0].answer, search_data, cache_data)
+            score, cache_id = search_data
+            # Only accept cache hit if score exceeds threshold
+            if score >= rank_threshold:
+                #print(f"Cache HIT: score={score}, threshold={rank_threshold}")
+                cache_data = time_cal(
+                    chat_cache.data_manager.get_scalar_data,
+                    func_name="get_data",
+                    report_func=chat_cache.report.data,
+                )(
+                    search_data,
+                    extra_param=context.get("get_scalar_data", None),
+                    session=session,
                 )
-                chat_cache.data_manager.hit_cache_callback(search_data)
+                if cache_data is None:
+                    continue
+
+                if "deps" in context and hasattr(cache_data.question, "deps"):
+                    eval_query_data = {
+                        "question": context["deps"][0]["data"],
+                        "embedding": None,
+                    }
+                    eval_cache_data = {
+                        "question": cache_data.question.deps[0].data,
+                        "answer": cache_data.answers[0].answer,
+                        "search_result": search_data,
+                        "cache_data": cache_data,
+                        "embedding": None,
+                    }
+                else:
+                    eval_query_data = {
+                        "question": pre_store_data,
+                        "embedding": embedding_data,
+                    }
+
+                    eval_cache_data = {
+                        "question": cache_data.question,
+                        "answer": cache_data.answers[0].answer,
+                        "search_result": search_data,
+                        "cache_data": cache_data,
+                        "embedding": cache_data.embedding_data,
+                    }
+                rank = time_cal(
+                    chat_cache.similarity_evaluation.evaluation,
+                    func_name="evaluation",
+                    report_func=chat_cache.report.evaluation,
+                )(
+                    eval_query_data,
+                    eval_cache_data,
+                    extra_param=context.get("evaluation_func", None),
+                )
+                gptcache_log.debug(
+                    "similarity: [user question] %s, [cache question] %s, [value] %f",
+                    pre_store_data,
+                    cache_data.question,
+                    rank,
+                )
+                if rank_threshold <= rank:
+                    cache_answers.append(
+                        (float(rank), cache_data.answers[0].answer, search_data, cache_data)
+                    )
+                    chat_cache.data_manager.hit_cache_callback(search_data)
+            # else:
+            #     print(f"Cache MISS: score={score}, threshold={rank_threshold}")
         cache_answers = sorted(cache_answers, key=lambda x: x[0], reverse=True)
         answers_dict = dict((d[1], d) for d in cache_answers)
         if len(cache_answers) != 0:
