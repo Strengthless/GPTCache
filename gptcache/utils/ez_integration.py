@@ -4,12 +4,12 @@ from gptcache.utils.cache_func import cache_selectively, cache_all
 def get_content_func(data, **_):
     return data.get("prompt").split("Question")[-1]
 
-def init_cache_with_ollama(ollama_llm, embedding_func, data_manager, similarity_evaluation):
+def init_cache_with_ollama(ollama_llm, embedding_func, data_manager, similarity_evaluation, cache_mode="all"):
     llm_cache = Cache()
     llm_cache.init(
         embedding_func=embedding_func,
         data_manager=data_manager,
-        cache_enable_func=cache_all, #  SLM for classifying prompts
+        cache_enable_func=cache_all if "all" else cache_selectively,
         pre_embedding_func=get_content_func,
         similarity_evaluation=similarity_evaluation,
         llm_provider="ollama",
