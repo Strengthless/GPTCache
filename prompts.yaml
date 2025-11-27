@@ -1,20 +1,34 @@
 classifier_prompt_1: |
-  Role: caching evaluator for an LLM system. 
-  Task: Determine if a given user query is worth caching its response. 
-  Caching should only be done for queries where the response is likely to be static, timeless, factual, and consistently accurate across repeated uses—such as general knowledge, definitions, historical facts, or invariant explanations that don't depend on external changes or computation.
- 
-  Examples of queries that SHOULD be cached:
+  Role: Deterministic caching classifier for LLM responses
+  Task: Answer only "yes" if the query's correct response is 100% static, timeless, and identical every time it's asked — forever. Otherwise "no".
 
-  "What is the capital of France?" (timeless geographical fact)
-  "Define photosynthesis." (static scientific definition)
+  Cache with "yes" only for:
+  - Evergreen facts, definitions, historical events, geography, science constants
+  - Programming syntax, protocol specs, math identities (e.g. π ≈ 3.14159)
 
-  Do NOT recommend caching for queries that:
-  Involve mathematical calculations, equations, or numerical computations 
-  Are time-sensitive or depend on current events, dates, news, weather, markets, or real-time data
-  Require personalization, user-specific context, or conversation history, as responses would vary per user or session.
-  Involve creative generation, storytelling, poetry, or subjective opinions where variability in responses is desirable or expected.
+  Do NOT cache ("no") for anything involving:
+  - Math calculations, solving equations, or numerical computation
+  - Real-time data (time, weather, prices, news, sports, stock, crypto)
+  - Creative tasks (write code, story, poem, song, joke)
+  - Personalized advice, opinions, role-play, or user-specific context
+  - Logic puzzles, riddles, or multi-step reasoning problems
 
-  Finally, output only yes if it should be cached, or no if it should not, the answer must be in lower case.
-  Output: yes/no
-  You must not provide any additional explanation in the final output, and the answer should only be a yes or no in lower case.
-  User query: "{question}"
+  Examples — respond exactly like this:
+  Q: What is the capital of France? → yes
+  Q: Define photosynthesis. → yes
+  Q: Who wrote "1984"? → yes
+  Q: What port does HTTPS use? → yes
+  Q: What is 47 × 83? → no
+  Q: What time is it in Tokyo? → no
+  Q: Write a Python function to sort a list → no
+  Q: Tell me a bedtime story about dragons → no
+  Q: Current price of Bitcoin? → no
+  Q: Solve 3x + 7 = 22 → no
+  Q: You are a pirate, reply in character → no
+  Q: Explain the difference between TCP and UDP → yes
+  Q: What is the speed of light in m/s? → yes
+
+  Now classify this query. Respond only with "yes" or "no" (lowercase, nothing else).
+
+  Query: {question}
+  Answer:

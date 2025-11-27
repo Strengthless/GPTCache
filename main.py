@@ -15,14 +15,14 @@ from gptcache.utils.cache_func import cache_selectively
 print("Cache loading.....")
 
 onnx = Onnx()
-# qdrant = VectorBase(
-#     "qdrant",
-#     top_k=10,
-#     dimension=onnx.dimension,
-#     location=":memory:",
-#     hybrid=False # True for hybrid search mode, False for dense only
-# )
-# data_manager = get_data_manager(CacheBase("sqlite"), qdrant)
+qdrant = VectorBase(
+    "qdrant",
+    top_k=10,
+    dimension=onnx.dimension,
+    location=":memory:",
+    hybrid=False # True for hybrid search mode, False for dense only
+)
+data_manager = get_data_manager(CacheBase("sqlite"), qdrant)
 llm = OllamaLLM(
     model="hf.co/lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF:Q4_K_M",
     validate_model_on_init=True,
@@ -30,329 +30,151 @@ llm = OllamaLLM(
     num_predict=256
 )
 
-# llm_cache, cached_llm = init_cache_with_ollama(
-#     llm, 
-#     embedding_func=onnx.to_embeddings,
-#     data_manager=data_manager,
-#     similarity_evaluation=SearchDistanceEvaluation()
-# )
+llm_cache, cached_llm = init_cache_with_ollama(
+    llm, 
+    embedding_func=onnx.to_embeddings,
+    data_manager=data_manager,
+    similarity_evaluation=SearchDistanceEvaluation()
+)
 
-# llm_cache.set_openai_key()
-# llm_cache.config.similarity_threshold = 0.2  # Set similarity threshold for cache hits
+llm_cache.set_openai_key()
+llm_cache.config.similarity_threshold = 0.2  # Set similarity threshold for cache hits
 
+test_dataset = [
+    # ==============================================================================
+    # 1. EVERGREEN FACTUAL — MUST BE CACHABLE (perfect for semantic cache)
+    # ==============================================================================
+    {"q": "What is the capital of France?", "a": "Paris", "cacheable": True},
+    {"q": "Who wrote 'Pride and Prejudice'?", "a": "Jane Austen", "cacheable": True},
+    {"q": "What year was the Python programming language first released?", "a": "1991", "cacheable": True},
+    {"q": "What does HTTP stand for?", "a": "HyperText Transfer Protocol", "cacheable": True},
+    {"q": "Name the seven layers of the OSI model in order.", "a": "Physical, Data Link, Network, Transport, Session, Presentation, Application", "cacheable": True},
+    {"q": "What is the chemical symbol for gold?", "a": "Au", "cacheable": True},
+    {"q": "How many bits are in one byte?", "a": "8", "cacheable": True},
+    {"q": "What is the speed of light in vacuum in m/s?", "a": "299,792,458 m/s", "cacheable": True},
+    {"q": "Who painted the Mona Lisa?", "a": "Leonardo da Vinci", "cacheable": True},
+    {"q": "What is the largest planet in our solar system?", "a": "Jupiter", "cacheable": True},
 
-def load_and_import_mock_data(cache_obj, max_pairs=10):
-    questions = list(test_questions)
-    if max_pairs and max_pairs < len(questions):
-        questions = questions[:max_pairs]
-    answers = [str(i) for i in range(len(questions))]
-    benchmark_rows = [{"query": q, "expected": answers[i]} for i, q in enumerate(questions)]
-    cache_obj.import_data(questions=questions, answers=answers)
-    return benchmark_rows
+    # ==============================================================================
+    # 2. NEAR-EVERGREEN (very slow changing) — should be cached with medium-long TTL
+    # ==============================================================================
+    {"q": "What is the current version of the Python language as of 2025?", "a": "Python 3.13 (stable), Python 3.14 in development", "cacheable": True},
+    {"q": "Who is the current CEO of OpenAI in November 2025?", "a": "Sam Altman", "cacheable": True},  # change only every few years
+    {"q": "What is the latest stable version of Kubernetes?", "a": "v1.31 (as of late 2025)", "cacheable": True},
+    {"q": "Which company acquired GitHub and when?", "a": "Microsoft in 2018 (completed 2020)", "cacheable": True},
 
-test_questions = [
-    "What is a smartphone?",
-    "Explain how a refrigerator works.",
-    "What is the primary use of a microwave oven?",
-    "What features does a modern laptop typically have?",
-    "Name popular smartphone operating systems.",
-    "What's the difference between iOS and Android?",
-    "How do video calls work on a phone?",
-    "What is HIPAA and what does it regulate?",
-    "Outline the key rights under CCPA.",
-    "What are the penalties for non-compliance with data privacy laws?",
-    "What's the current exchange rate for GBP to USD?",
-    "How can I track live currency fluctuations?",
-    "What is Bitbucket used for?",
-    "How does code branching function in Git?",
-    "Why is source control important in software development?",
-    "Provide a basic recipe for chocolate chip cookies.",
-    "How long to bake brownies at 350F?",
-    "Tips for training a cat to use a litter box.",
-    "Describe the water cycle in nature.",
-    "Who invented the telephone and in what year?",
-    "What is the capital of Japan?",
-    "What does TCP/IP stand for?",
-    "Key principles of GraphQL APIs.",
-    "Why is integration testing valuable?",
-    "Example of a while loop in JavaScript.",
-    "Simple definition of artificial intelligence.",
-    "What is unsupervised learning?",
-    "What is the value of pi to two decimal places?",
-    "What time is it now in New York?",
-    "What's the weather like in Sydney today?",
-    "What is a stack overflow in programming?",
-    "Common sorting algorithms.",
-    "What does RAM stand for?",
-    "Name the continents of the world.",
-    "How to recover a lost email account?",
-    "High-level overview of data compression.",
-    "Steps to make tea using a teapot.",
-    "Define NFT in simple terms.",
-    "What is decentralized finance (DeFi)?",
-    "Guide to a quick yoga session for beginners.",
-    "Benefits of a balanced diet.",
-    "Ways to reduce stress in daily life.",
-    "Purpose of a foreign key in databases.",
-    "Differences between MongoDB and MySQL.",
-    "How to merge Git branches safely?",
-    "What is JWT used for in authentication?",
-    "How does biometric authentication work?",
-    "What is a URI in web development?",
-    "Metrics for evaluating classification models.",
-    "Difference between F1-score and accuracy.",
-    "What is underfitting in models?",
-    "Steps to perform logistic regression.",
-    "What is k-fold cross-validation?",
-    "How to activate a Python virtual environment?",
-    "What is conda in Python ecosystem?",
-    "How to generate a requirements.txt file?",
-    "What is Kubernetes used for?",
-    "Build a simple web server in Node.js.",
-    "What is continuous deployment (CD)?",
-    "Writing a test with Jest framework.",
-    "Threads vs coroutines: what's the difference?",
-    "Error handling in JavaScript.",
-    "What is a convolutional neural network?",
-    "Explain gradient descent optimization.",
-    "What is stemming in text processing?",
-    "Uses of vector databases.",
-    "How to calculate median in a dataset?",
-    "Why secure environment variables?",
-    "Implementing infinite scrolling in apps.",
-    "Bandwidth vs latency: explain.",
-    "How do indexes work in databases?",
-    "What is strong consistency?",
-    "SQL query to group and aggregate data.",
-    "Unique key vs primary key.",
-    "What is HTTP/2 and its benefits?",
-    "Optimizing videos for streaming.",
-    "What is SEO in digital marketing?",
-    "How to create a grid layout in CSS?",
-    "Principles of mobile-first design.",
-    "Setting up a Vue.js project.",
-    "What is semantic versioning?",
-    "Explain ACID properties in transactions.",
-    "POST vs GET: differences.",
-    "How to restore a MySQL database?",
-    "What is auto-scaling in cloud?",
-    "Securing data in motion.",
-    "Symmetric vs asymmetric encryption.",
-    "How does a VPN work?",
-    "Differences between HTTP and HTTPS.",
-    "What is a domain registrar?",
-    "Strategies for error monitoring.",
-    "What is telemetry in software?",
-    "Best practices for auditing logs.",
-    "What are A/B tests?",
-    "Optimizing lambda functions.",
-    "What is fog computing?",
-    "How do reverse proxies work?",
-    "Callback vs promise in async code.",
-    "Using list comprehensions in Python.",
-    "What is zero-trust security?",
-    "Blue-green deployment strategy.",
-    "What is a service mesh?",
-    "Data masking techniques.",
-    "Long polling vs websockets.",
-    "When to use a pub/sub system?",
-    "Load testing tools.",
-    "What is circuit breaking in microservices?",
-    "Designing retry mechanisms.",
+    # ==============================================================================
+    # 3. TIME-SENSITIVE — MUST NOT BE CACHED
+    # ==============================================================================
+    {"q": "What is the current price of Bitcoin in USD?", "a": None, "cacheable": False},
+    {"q": "What time is it right now in Tokyo?", "a": None, "cacheable": False},
+    {"q": "What's the weather like in London today?", "a": None, "cacheable": False},
+    {"q": "Who won the last Formula 1 race?", "a": None, "cacheable": False},
+    {"q": "What are today's top headlines on Hacker News?", "a": None, "cacheable": False},
+    {"q": "What is the current exchange rate EUR to JPY?", "a": None, "cacheable": False},
+    {"q": "How many people have visited grok.x.ai today?", "a": None, "cacheable": False},
+
+    # ==============================================================================
+    # 4. MATH / EXACT COMPUTATION — MUST NOT BE CACHED
+    # ==============================================================================
+    {"q": "What is 47 × 83?", "a": None, "cacheable": False},
+    {"q": "Solve 3x + 5 = 23 for x.", "a": None, "cacheable": False},
+    {"q": "What is the 19th prime number?", "a": None, "cacheable": False},
+    {"q": "Calculate the determinant of [[1,2],[3,4]].", "a": None, "cacheable": False},
+    {"q": "What is sin(π/3) exactly?", "a": "√3/2", "cacheable": True},  # evergreen math fact
+    {"q": "Compute 2^20.", "a": None, "cacheable": False},
+
+    # ==============================================================================
+    # 5. LOGICAL PUZZLES / REASONING — MUST NOT BE CACHED (high variance)
+    # ==============================================================================
+    {"q": "You have 9 balls, one is heavier, using a balance scale in 2 weighings, find it.", "a": None, "cacheable": False},
+    {"q": "Einstein's riddle: who owns the fish?", "a": None, "cacheable": False},
+    {"q": "Three people check into a hotel room that costs $30...", "a": None, "cacheable": False},
+    {"q": "There are 5 houses in a row, each of a different color...", "a": None, "cacheable": False},
+    {"q": "Can you solve this Sudoku: [grid]?", "a": None, "cacheable": False},
+
+    # ==============================================================================
+    # 6. CREATIVE / OPEN-ENDED / PERSONALIZED — MUST NOT BE CACHED
+    # ==============================================================================
+    {"q": "Write a funny poem about a cat who loves lasagna.", "a": None, "cacheable": False},
+    {"q": "Give me 10 creative name ideas for a coffee shop run by programmers.", "a": None, "cacheable": False},
+    {"q": "Help me write a breakup text that's kind but firm.", "a": None, "cacheable": False},
+    {"q": "Suggest a 7-day workout plan for a beginner who hates running.", "a": None, "cacheable": False},
+    {"q": "Role-play as Elon Musk answering questions about Mars colonization.", "a": None, "cacheable": False},
+    {"q": "Generate a bedtime story for a 6-year-old who loves dinosaurs.", "a": None, "cacheable": False},
+
+    # ==============================================================================
+    # 7. CODE GENERATION — usually NOT cacheable (high variance)
+    # ==============================================================================
+    {"q": "Write a FastAPI endpoint that accepts JSON and returns uppercase strings.", "a": None, "cacheable": False},
+    {"q": "Implement binary search in Rust.", "a": None, "cacheable": False},
+    {"q": "Create a React component for a todo list with drag-and-drop.", "a": None, "cacheable": False},
+    {"q": "Write a Docker Compose file for PostgreSQL + Redis + Nginx.", "a": None, "cacheable": False},
+    {"q": "What is the syntax for a Python list comprehension?", "a": "[expr for item in iterable if condition]", "cacheable": True},  # trivial syntax → cacheable
+
+    # ==============================================================================
+    # 8. TRIVIAL ONE-LINERS — perfect for exact + semantic cache hits
+    # ==============================================================================
+    {"q": "What port does HTTPS use by default?", "a": "443", "cacheable": True},
+    {"q": "What does JSON stand for?", "a": "JavaScript Object Notation", "cacheable": True},
+    {"q": "What is the file extension for Python scripts?", "a": ".py", "cacheable": True},
+    {"q": "Which HTTP method is idempotent: POST or PUT?", "a": "PUT", "cacheable": True},
+    {"q": "What is the time complexity of accessing a hash map?", "a": "O(1) average", "cacheable": True},
+    {"q": "What does SQL stand for?", "a": "Structured Query Language", "cacheable": True},
+    {"q": "What is the default port for PostgreSQL?", "a": "5432", "cacheable": True},
+
+    # ==============================================================================
+    # 9. SEMANTIC EDGE CASES — rephrased versions of the same meaning
+    #    → Great for testing embedding similarity threshold in hybrid search
+    # ==============================================================================
+    {"q": "In which city is the Eiffel Tower located?", "a": "Paris", "cacheable": True},  # same as "capital of France" semantically close
+    {"q": "Tell me the capital city of the country famous for the Eiffel Tower.", "a": "Paris", "cacheable": True},
+    {"q": "Python was created in what year?", "a": "1991", "cacheable": True},
+    {"q": "When did Guido van Rossum release the first version of Python?", "a": "1991", "cacheable": True},
+    {"q": "What is the boiling point of water at sea level in Celsius?", "a": "100°C", "cacheable": True},
+    {"q": "At standard pressure, water boils at how many degrees Celsius?", "a": "100°C", "cacheable": True},
+
+    # ==============================================================================
+    # 10. LONG BUT EVERGREEN EXPLANATIONS — test chunking + semantic retrieval
+    # ==============================================================================
+    {"q": "Explain how HTTPS works step by step including TLS handshake.", "a": """1. Client hello...""", "cacheable": True},
+    {"q": "Give a detailed explanation of how Git rebase differs from merge.", "a": """Rebase rewrites history...""", "cacheable": True},
+    {"q": "Describe the CAP theorem and its implications for distributed databases.", "a": """Consistency, Availability, Partition tolerance...""", "cacheable": True},
 ]
 
-test_answers = [
-    "A portable device that combines phone, computer, and camera functions.",
-    "A refrigerator cools food using a vapor-compression cycle to preserve freshness.",
-    "Heating and cooking food quickly using microwave radiation.",
-    "Laptops include processors, RAM, storage, displays, and connectivity options.",
-    "iOS, Android, and Windows Mobile are common smartphone OS.",
-    "iOS is Apple-exclusive with tight integration; Android is open-source and customizable.",
-    "Video calls transmit audio and video over internet protocols like VoIP.",
-    "HIPAA regulates protected health information in the US healthcare sector.",
-    "CCPA gives California residents rights over their personal data.",
-    "Penalties include fines, lawsuits, and reputational damage.",
-    None,  # time-sensitive
-    None,  # time-sensitive
-    "Bitbucket is for code hosting and collaboration using Git or Mercurial.",
-    "Branching creates independent lines of development in Git.",
-    "Source control tracks changes, prevents conflicts, and supports team work.",
-    None,  # creative/recipe
-    None,  # creative/time may vary
-    "Consistency, patience, and positive reinforcement for litter box use.",
-    "Water evaporates, condenses into clouds, precipitates, and collects.",
-    "Alexander Graham Bell invented the telephone in 1876.",
-    "Tokyo is the capital of Japan.",
-    "Transmission Control Protocol/Internet Protocol for networking.",
-    "GraphQL allows clients to request specific data with a single endpoint.",
-    "Integration testing verifies components work together as expected.",
-    "let i = 0;\nwhile (i < 5) {\n  console.log(i);\n  i++;\n}",
-    "AI simulates human intelligence in machines for tasks like learning.",
-    "Unsupervised learning finds patterns in unlabeled data.",
-    "3.14",
-    None,  # time-sensitive
-    None,  # time-sensitive
-    "Stack overflow occurs when call stack exceeds allocated memory.",
-    "Bubble sort, quicksort, mergesort, heapsort.",
-    "Random Access Memory, temporary storage for running programs.",
-    "Africa, Antarctica, Asia, Europe, North America, Oceania, South America.",
-    "Use recovery options like security questions or alternate emails.",
-    "Compression reduces file size by removing redundancies.",
-    None,  # creative/steps may vary
-    "NFT is a unique digital asset verified on blockchain.",
-    "DeFi uses blockchain for financial services without intermediaries.",
-    None,  # creative
-    "Supports weight management, nutrient intake, and disease prevention.",
-    None,  # creative/advice
-    "Foreign keys enforce referential integrity between tables.",
-    "MongoDB is document-based NoSQL; MySQL is relational SQL.",
-    "Use git merge or rebase after reviewing changes.",
-    "JWT securely transmits claims between parties as tokens.",
-    "Biometrics use unique physical traits like fingerprints for verification.",
-    "URI identifies resources on the web, including URLs and URNs.",
-    "Use ROC curves, confusion matrices, precision-recall.",
-    "F1-score balances precision and recall; accuracy is overall correctness.",
-    "Underfitting is when a model is too simple and performs poorly.",
-    "Use sigmoid function to model binary outcomes.",
-    "Divide data into k subsets and train/test iteratively.",
-    "Source .venv/bin/activate on Unix or .venv\\Scripts\\activate on Windows.",
-    "Conda manages environments and packages across languages.",
-    "Use pip freeze > requirements.txt",
-    "Kubernetes orchestrates containerized applications.",
-    None,  # creative/code example
-    "CD automates releasing code to production after CI.",
-    None,  # creative/code
-    "Threads are lightweight; coroutines are user-managed for async.",
-    "Use try-catch blocks to manage errors in JS.",
-    "CNN uses convolutional layers for image feature extraction.",
-    "Gradient descent minimizes loss by adjusting parameters.",
-    "Stemming reduces words to root forms for normalization.",
-    "Vector databases store and query high-dimensional data efficiently.",
-    None,  # math/computation
-    "Environment variables hold configs; secure to avoid exposure.",
-    None,  # creative/implementation
-    "Bandwidth is capacity; latency is delay.",
-    "Indexes create data structures for faster queries.",
-    "Strong consistency ensures latest data is always read.",
-    "Use GROUP BY and functions like SUM, COUNT.",
-    "Unique key allows nulls; primary key does not.",
-    "HTTP/2 improves speed with multiplexing and compression.",
-    "Use codecs like H.264 and reduce bitrate.",
-    "SEO optimizes sites for better search engine rankings.",
-    None,  # creative/code
-    "Mobile-first starts design for small screens then scales up.",
-    "Use Vue CLI to initialize a new Vue project.",
-    "Semantic versioning uses MAJOR.MINOR.PATCH format.",
-    "Atomicity, Consistency, Isolation, Durability for reliable transactions.",
-    "POST sends data to create; GET retrieves data.",
-    "Use mysqldump for backups and mysql for restores.",
-    "Auto-scaling adjusts resources based on demand.",
-    "Use encryption protocols like TLS.",
-    "Symmetric uses same key; asymmetric uses key pairs.",
-    "VPN creates secure tunnels over public networks.",
-    "HTTPS adds encryption to HTTP.",
-    "Domain registrar manages domain name registrations.",
-    "Use logging, metrics, and alerting systems.",
-    "Telemetry collects data on system performance.",
-    "Audit logs for compliance, avoiding PII.",
-    None,  # logic/creative
-    None,  # creative/optimization
-    "Fog computing extends cloud to IoT devices.",
-    "Reverse proxies handle requests on behalf of servers.",
-    "Callbacks are functions passed; promises handle async results.",
-    None,  # creative/code
-    "Zero-trust verifies every access regardless of location.",
-    "Blue-green deploys to two environments and switches traffic.",
-    "Service mesh manages microservice communications.",
-    None,  # creative
-    "Long polling holds requests; websockets enable bidirectional.",
-    "Pub/sub for broadcasting messages to subscribers.",
-    None,  # creative/tools
-    "Circuit breaking stops calls to failing services.",
-    None,  # logic/design
-]
+questions = [item["q"] for item in test_dataset]
+expected_answers = [item["a"] for item in test_dataset]           # None means should NOT be cached
+expected_cacheable = [item["cacheable"] for item in test_dataset]
 
+# Also update load_and_import_mock_data to use real cacheable questions
+def load_and_import_mock_data(cache_obj, max_pairs=None):
+    # Only import questions that are marked as cacheable=True
+    cacheable_items = [item for item in test_dataset if item["cacheable"]]
+    if max_pairs:
+        cacheable_items = cacheable_items[:max_pairs]
+    
+    questions_to_cache = [item["q"] for item in cacheable_items]
+    answers_to_cache = [item["a"] for item in cacheable_items]
+    
+    print(f"Pre-populating cache with {len(questions_to_cache)} evergreen questions...")
+    cache_obj.import_data(questions=questions_to_cache, answers=answers_to_cache)
+    
+    return [{"query": q, "expected": a} for q, a in zip(questions_to_cache, answers_to_cache)]
 
-cache_hits = 0
-total_time = []
-results = []
+print("\nSLM Classification Accuracy".center(60, "="))
+correct = 0
+for item in test_dataset:
+    answer = llm.invoke(item["q"]).strip()
+    predicted_cache = (answer == "yes")
+    if predicted_cache == item["cacheable"]:
+        correct += 1
 
-# for idx, question in enumerate(test_questions):
-#     start_time = time.time()
-#     response = cached_llm(
-#         question, cache_obj=llm_cache
-#     )
-#     elapsed = time.time() - start_time
-#     total_time.append(elapsed)
-#     answer = llm_cache.response_text(response)
-#     is_hit = elapsed < 2.0
-#     if is_hit:
-#         cache_hits += 1
-#     #print(f'Question: {question}')
-#     #print("Time consuming: {:.2f}s".format(elapsed))
-#     #print(f'Answer: {answer}\n')
-#     #print("Cache HIT" if is_hit else "Cache MISS")
-#     results.append((question, answer, is_hit, elapsed))
-
-# print(f"Cache Hit Rate: {cache_hits}/{len(test_questions)} ({cache_hits/len(test_questions)*100:.1f}%)")
-# print(f"Average Response Time: {sum(total_time)/len(total_time):.2f}s")
-
-# # Improved Top-1 accuracy: Use embedding similarity for better evaluation
-# correct = 0
-# for i, (question, answer, is_hit, elapsed) in enumerate(results):
-#     expected = test_answers[i] if i < len(test_answers) else None
-#     if expected:
-#         # Compute embedding similarity (cosine similarity)
-#         emb_expected = onnx.to_embeddings(expected)
-#         emb_answer = onnx.to_embeddings(answer)
-#         similarity = np.dot(emb_expected, emb_answer) / (np.linalg.norm(emb_expected) * np.linalg.norm(emb_answer))
-#         if similarity > 0.8:  # Threshold for "correct" match
-#             correct += 1
-# print(f"Top-1 Accuracy: {correct}/{len(test_questions)} ({correct/len(test_questions)*100:.1f}%)")
-
-# # Confusion Matrix Metrics
-# TP = 0  # True Positive: Cache hit and expected answer exists (should be hit)
-# TN = 0  # True Negative: Cache miss and expected answer is None (should be miss)
-# FP = 0  # False Positive: Cache hit but expected answer is None (incorrect hit)
-# FN = 0  # False Negative: Cache miss but expected answer exists (missed hit)
-
-# for i, (question, answer, is_hit, elapsed) in enumerate(results):
-#     expected = test_answers[i] 
-#     if is_hit and expected is not None:
-#         TP += 1
-#     elif not is_hit and expected is None:
-#         TN += 1
-#     elif is_hit and expected is None:
-#         FP += 1
-#     elif not is_hit and expected is not None:
-#         FN += 1
-
-# print(f"\nConfusion Matrix:")
-# print(f"True Positive (TP): {TP} - Correct cache hits for relevant queries")
-# print(f"True Negative (TN): {TN} - Correct cache misses for unrelated queries")
-# print(f"False Positive (FP): {FP} - Incorrect cache hits for unrelated queries")
-# print(f"False Negative (FN): {FN} - Missed cache hits for relevant queries")
-
-# # Derived metrics
-# precision = TP / (TP + FP) if (TP + FP) > 0 else 0
-# recall = TP / (TP + FN) if (TP + FN) > 0 else 0
-# f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-
-# print(f"\nDerived Metrics:")
-# print(f"Precision: {precision:.2f} - Accuracy of cache hits")
-# print(f"Recall: {recall:.2f} - Ability to find relevant cache hits")
-# print(f"F1 Score: {f1_score:.2f} - Balanced measure of precision and recall")
-
-# 
-    # print(f"Question: {question}")
-    # print(f"SLM Decision: {'Cache' if should_cache else 'Skip'}")
-    # print(f"Expected: {'Cache' if expected_cache else 'Skip'}")
-    # print(f"Correct: {should_cache == expected_cache}")
-    # print()
-#print(f"SLM Accuracy: {correct_classifications}/{len(test_questions)} ({correct_classifications/len(test_questions)*100:.1f}%)")
+accuracy = correct / len(test_dataset)
+print(f"SLM Accuracy: {correct}/{len(test_dataset)} → {accuracy:.1%}")
+print("=" * 60)
 
 modes = [True, False]
-cache_modes = ["all", "selecive"]
+cache_modes = ["all"]
 for hybrid_mode in modes:
     for cache_mode in cache_modes:
         print(f"\n--- {'Hybrid' if hybrid_mode else 'Dense'} Mode Performance --- Cache Mode: {cache_mode}")
@@ -381,80 +203,72 @@ for hybrid_mode in modes:
         benchmark_misses = 0
         benchmark_latencies = []
         benchmark_failures = 0
-        
-        for pair in benchmark_pairs:
-            query = pair["query"]
-            expected = pair["expected"]
+
+        print("Running exact-match benchmark on pre-cached questions...")
+        for item in test_dataset:
+            if not item["cacheable"]:
+                continue  # skip non-cacheable for benchmark
+            query = item["q"]
+            expected_answer = str(item["a"]).strip()
+
             try:
                 start_time = time.time()
                 response = cached_llm(query, cache_obj=llm_cache)
                 elapsed = time.time() - start_time
                 benchmark_latencies.append(elapsed)
                 answer = llm_cache.response_text(response).strip()
-                if answer == expected:
+
+                if answer == expected_answer:
                     benchmark_hits += 1
                 else:
                     benchmark_misses += 1
-            except Exception as exc:
+                    print(f"MISS MATCH: Q: {query[:60]}... | Got: '{answer}' | Expected: '{expected_answer}'")
+            except Exception as e:
+                print(f"ERROR on query: {query}\n{e}")
                 benchmark_failures += 1
+
+        total_benchmark = benchmark_hits + benchmark_misses
+        hit_rate = benchmark_hits / total_benchmark if total_benchmark > 0 else 0
+        avg_time = sum(benchmark_latencies) / len(benchmark_latencies) if benchmark_latencies else 0
+
+        print(f"Exact Match Recall (on cached items): {benchmark_hits}/{total_benchmark} ({hit_rate:.1%})")
+        print(f"Avg Cache Hit Latency: {avg_time:.3f}s")
         
-        total_benchmark = len(benchmark_pairs)
-        avg_benchmark_time = (
-            sum(benchmark_latencies) / len(benchmark_latencies) if benchmark_latencies else 0
-        )
-        print(f"Benchmark Cache Hits: {benchmark_hits}/{total_benchmark}")
-        print(f"Benchmark Avg Response Time: {avg_benchmark_time:.2f}s")
-        
+        print("Evaluating full test suite (cacheable vs non-cacheable detection)...")
         cache_hits = 0
         total_time = []
         results = []
-        
-        for idx, question in enumerate(test_questions):
+
+        for idx, item in enumerate(test_dataset):
+            question = item["q"]
+            should_be_cached = item["cacheable"]
+
             start_time = time.time()
-            response = cached_llm(
-                question, cache_obj=llm_cache
-            )
+            response = cached_llm(question, cache_obj=llm_cache)
             elapsed = time.time() - start_time
             total_time.append(elapsed)
             answer = llm_cache.response_text(response)
-            is_hit = elapsed < 2.0
+            is_hit = elapsed < 1.5  # tighter threshold for true cache hit
+
             if is_hit:
                 cache_hits += 1
             results.append((question, answer, is_hit, elapsed))
-        
-        print(f"Cache Hit Rate: {cache_hits}/{len(test_questions)} ({cache_hits/len(test_questions)*100:.1f}%)")
-        print(f"Average Response Time: {sum(total_time)/len(total_time):.2f}s")
-        
-        #correct = 0
-        # for i, (question, answer, is_hit, elapsed) in enumerate(results):
-        #     expected = test_answers[i] if i < len(test_answers) else None
-        #     if expected:
-        #         emb_expected = onnx.to_embeddings(expected)
-        #         emb_answer = onnx.to_embeddings(answer)
-        #         similarity = np.dot(emb_expected, emb_answer) / (np.linalg.norm(emb_expected) * np.linalg.norm(emb_answer))
-        #         if similarity > 0.65:
-        #             correct += 1
-        # print(f"Top-1 Accuracy: {correct}/{len(test_questions)} ({correct/len(test_questions)*100:.1f}%)")
-        
-        TP = 0
-        TN = 0
-        FP = 0
-        FN = 0
-        for i, (question, answer, is_hit, elapsed) in enumerate(results):
-            expected = test_answers[i] 
-            if is_hit and expected is not None:
-                TP += 1
-            elif not is_hit and expected is None:
-                TN += 1
-            elif is_hit and expected is None:
-                FP += 1
-            elif not is_hit and expected is not None:
-                FN += 1
-        
+
+        print(f"Raw Cache Hit Rate: {cache_hits}/{len(test_dataset)} ({cache_hits/len(test_dataset)*100:.1f}%)")
+        print(f"Avg Response Time: {np.mean(total_time):.3f}s ± {np.std(total_time):.3f}s")
+
+        # Proper confusion matrix using ground truth "cacheable" label
+        TP = sum(1 for item, (_, _, is_hit, _) in zip(test_dataset, results) if is_hit and item["cacheable"])
+        TN = sum(1 for item, (_, _, is_hit, _) in zip(test_dataset, results) if not is_hit and not item["cacheable"])
+        FP = sum(1 for item, (_, _, is_hit, _) in zip(test_dataset, results) if is_hit and not item["cacheable"])
+        FN = sum(1 for item, (_, _, is_hit, _) in zip(test_dataset, results) if not is_hit and item["cacheable"])
+
         precision = TP / (TP + FP) if (TP + FP) > 0 else 0
         recall = TP / (TP + FN) if (TP + FN) > 0 else 0
-        f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-        
-        print(f"Precision: {precision:.2f}")
-        print(f"Recall: {recall:.2f}")
-        print(f"F1 Score: {f1_score:.2f}")
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+
+        print(f"\nSemantic Cache Quality (vs Ground Truth):")
+        print(f"TP: {TP} | TN: {TN} | FP: {FP} | FN: {FN}")
+        print(f"Precision: {precision:.3f} | Recall: {recall:.3f} | F1: {f1:.3f}")
+        print(f"{'Hybrid' if hybrid_mode else 'Dense'}-only mode | Threshold: {llm_cache.config.similarity_threshold}")
+        print("-" * 60)
