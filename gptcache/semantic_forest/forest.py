@@ -76,9 +76,15 @@ class SemanticChunkEmbedding:
 class SemanticForestChunker:
     """Chunk chat history into sequences of user queries."""
 
-    def __init__(self, max_chunk_size: int = 4, drift_threshold: float = 0.35):
+    def __init__(
+        self,
+        max_chunk_size: int = 4,
+        drift_threshold: float = 0.35,
+        window_size: int = 2,
+    ):
         self.max_chunk_size = max(1, max_chunk_size)
         self.drift_threshold = max(0.0, min(1.0, drift_threshold))
+        self.window_size = max(1, window_size)
 
     def __call__(self, data: Dict[str, Any], **_: Dict[str, Any]) -> Tuple[str, SemanticChunk]:
         chunk = self.latest_chunk(data)
@@ -102,39 +108,58 @@ class SemanticForestChunker:
     def _build_chunks(self, user_queries: Sequence[SemanticQuery]) -> List[SemanticChunk]:
         chunks: List[List[SemanticQuery]] = []
         current_chunk: List[SemanticQuery] = []
-        prev_tokens: Optional[set] = None
+        window_vectors: List[np.ndarray] = []
         for query in user_queries:
-            tokens = self._tokenize(query.text)
+            vector = self._semantic_vector(query.text)
             if not current_chunk:
                 current_chunk.append(query)
-                prev_tokens = tokens
+                window_vectors = [vector]
                 continue
             if len(current_chunk) >= self.max_chunk_size:
                 chunks.append(current_chunk)
                 current_chunk = [query]
-            else:
-                similarity = self._token_overlap(prev_tokens, tokens)
-                if similarity < self.drift_threshold:
-                    chunks.append(current_chunk)
-                    current_chunk = [query]
-                else:
-                    current_chunk.append(query)
-            prev_tokens = tokens
+                window_vectors = [vector]
+                continue
+            current_chunk.append(query)
+            window_vectors.append(vector)
+            if len(current_chunk) <= self.window_size:
+                continue
+            reference = self._average_vector(window_vectors[-self.window_size - 1 : -1])
+            similarity = self._cosine_similarity(reference, vector)
+            if similarity < self.drift_threshold:
+                chunks.append(current_chunk[:-1])
+                current_chunk = [query]
+                window_vectors = [vector]
         if current_chunk:
             chunks.append(current_chunk)
         return [SemanticChunk(chunk) for chunk in chunks if chunk]
 
     @staticmethod
-    def _tokenize(text: str) -> set:
-        return set(token for token in "".join(ch.lower() if ch.isalnum() else " " for ch in text).split() if token)
+    def _semantic_vector(text: str, dim: int = 128) -> np.ndarray:
+        vector = np.zeros(dim, dtype="float32")
+        tokens = "".join(ch.lower() if ch.isalnum() else " " for ch in text).split()
+        for token in tokens:
+            vector[hash(token) % dim] += 1.0
+        norm = np.linalg.norm(vector)
+        return vector / norm if norm else vector
 
     @staticmethod
-    def _token_overlap(lhs: Optional[set], rhs: Optional[set]) -> float:
-        if not lhs or not rhs:
+    def _average_vector(vectors: List[np.ndarray]) -> np.ndarray:
+        if not vectors:
+            return np.zeros(1, dtype="float32")
+        stacked = np.vstack(vectors)
+        mean_vec = stacked.mean(axis=0)
+        norm = np.linalg.norm(mean_vec)
+        return mean_vec / norm if norm else mean_vec
+
+    @staticmethod
+    def _cosine_similarity(lhs: np.ndarray, rhs: np.ndarray) -> float:
+        if lhs.size == 0 or rhs.size == 0:
             return 0.0
-        inter = len(lhs & rhs)
-        union = len(lhs | rhs)
-        return float(inter) / float(union or 1)
+        denom = float(np.linalg.norm(lhs) * np.linalg.norm(rhs))
+        if denom == 0.0:
+            return 0.0
+        return float(np.dot(lhs, rhs) / denom)
 
 
 class SemanticForestEmbedder:
@@ -210,7 +235,12 @@ class ForestNode:
 class SemanticForestDataManager(DataManager):
     """A minimal in-memory (optional persisted) semantic forest data manager."""
 
-    def __init__(self, data_path: Optional[str] = None, similarity_threshold: float = 0.88, max_nodes: Optional[int] = 4096):
+    def __init__(
+        self,
+        data_path: Optional[str] = None,
+        similarity_threshold: float = 0.88,
+        max_nodes: Optional[int] = 4096,
+    ):
         self.data_path = data_path
         self.similarity_threshold = similarity_threshold
         self.max_nodes = max_nodes
@@ -540,10 +570,15 @@ def enable_semantic_forest(
     max_nodes: Optional[int] = 4096,
     base_embedding_func: Optional[Callable[..., Any]] = None,
     vector_dim: int = 64,
+    window_size: int = 2,
 ) -> SemanticForestDataManager:
     """Helper that wires the semantic forest into an existing cache instance."""
 
-    chunker = SemanticForestChunker(max_chunk_size=chunk_size, drift_threshold=drift_threshold)
+    chunker = SemanticForestChunker(
+        max_chunk_size=chunk_size,
+        drift_threshold=drift_threshold,
+        window_size=window_size,
+    )
     embedder = SemanticForestEmbedder(base_embedding_func=base_embedding_func, vector_dim=vector_dim)
     data_manager = SemanticForestDataManager(
         data_path=data_path,

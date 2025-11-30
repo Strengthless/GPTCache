@@ -51,7 +51,7 @@ def test_semantic_forest_cache_hits_read_from_tree():
     assert cache_data.question == chunk_text
 
 
-def test_semantic_forest_cache_miss_updates_tree():
+def test_semantic_forest_cache_miss_updates_tree_1():
     chunker = SemanticForestChunker(max_chunk_size=4)
     embedder = SemanticForestEmbedder(vector_dim=48)
     manager = SemanticForestDataManager(similarity_threshold=0.8, max_nodes=256)
@@ -81,6 +81,34 @@ def test_semantic_forest_cache_miss_updates_tree():
     assert leaf_node.depth == len(extended_chunk.queries) - 1
     assert leaf_node.cache_data.answers[0].answer == "discuss sharding"
 
+def test_semantic_forest_cache_miss_updates_tree_2():
+    chunker = SemanticForestChunker(max_chunk_size=4)
+    embedder = SemanticForestEmbedder(vector_dim=48)
+    manager = SemanticForestDataManager(similarity_threshold=0.8, max_nodes=256)
+
+    base_text, base_chunk = _chunk(
+        chunker,
+        "optimize sql queries",
+        "tell me more about it",
+    )
+    base_embedding = embedder(base_chunk)
+    manager.save(base_text, "use covering indexes", base_embedding)
+
+    extended_text, extended_chunk = _chunk(
+        chunker,
+        "tell me more about it",
+    )
+    extended_embedding = embedder(extended_chunk)
+    assert manager.search(extended_embedding) == [], "unknown path should miss"
+
+    manager.save(extended_text, "what do you want me to tell you?", extended_embedding)
+    hits = manager.search(extended_embedding)
+    assert len(hits) == 1
+
+    leaf_node = manager.nodes[hits[0][1]]
+    assert leaf_node.depth == len(extended_chunk.queries) - 1
+    assert leaf_node.cache_data.answers[0].answer == "what do you want me to tell you?"
+
 
 def test_semantic_forest_prevents_false_positive_from_semantic_dilution():
     embedder = SemanticForestEmbedder(vector_dim=64)
@@ -107,7 +135,7 @@ def test_semantic_forest_prevents_false_positive_from_semantic_dilution():
         "list more reasons",
     )
     repeated_embedding = embedder(repeated_chunk)
-    assert manager.search(repeated_embedding) == [], "repeating blended query should still miss"
+    assert manager.search(repeated_embedding) == [], "blended query with same query length should still miss"
 
 
 def test_semantic_forest_semantic_drift_creates_new_tree():
@@ -115,18 +143,26 @@ def test_semantic_forest_semantic_drift_creates_new_tree():
     embedder = SemanticForestEmbedder(vector_dim=64)
     manager = SemanticForestDataManager(similarity_threshold=0.9, max_nodes=64)
 
-    tech_text, tech_chunk = _chunk(
+    tech_text_1, tech_chunk_1 = _chunk(
+        chunker,
+        "debug kubernetes crashloop",
+    )
+    manager.save(tech_text_1, "ok, let's debug", embedder(tech_chunk_1))
+    assert len(manager.root_ids) == 1
+
+    tech_text_2, tech_chunk_2 = _chunk(
         chunker,
         "debug kubernetes crashloop",
         "inspect pod logs",
     )
-    manager.save(tech_text, "use kubectl logs", embedder(tech_chunk))
+    manager.save(tech_text_2, "use kubectl logs", embedder(tech_chunk_2))
     assert len(manager.root_ids) == 1
 
     cooking_text, cooking_chunk = _chunk(
         chunker,
+        "debug kubernetes crashloop",
+        "inspect pod logs",
         "how to temper chocolate",
-        "fix seized ganache",
     )
     cooking_embedding = embedder(cooking_chunk)
     manager.save(cooking_text, "use a double boiler", cooking_embedding)
