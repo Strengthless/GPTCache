@@ -1,0 +1,209 @@
+Semantic chunking benchmark report
+Data dir: examples/benchmark/semantic_chunk_sets_llm
+Datasets: coqa, squad_v2
+Pair count: 200
+Triple count: 0
+Preset: none
+Chunker config:
+  drift_threshold=0.35
+  window_size=2
+  max_chunk_size=4
+  node_match_threshold=0.88
+  vector_dim=64
+Variant grid:
+  target_rates=[0.3, 0.5, 0.7]
+  orders=['primed', 'shuffle']
+  prefix_context=[False, True]
+  mixed_per_pair=[0, 1]
+Variant specs: rate=0.5,order=primed,prefix=false,mixed=0;rate=0.5,order=primed,prefix=false,mixed=1;rate=0.5,order=primed,prefix=true,mixed=0;rate=0.5,order=primed,prefix=true,mixed=1;rate=0.5,order=shuffle,prefix=false,mixed=1;rate=0.3,order=primed,prefix=false,mixed=1;rate=0.7,order=primed,prefix=false,mixed=1
+
+Dataset: coqa
+Sessions: 800
+Variant: target_rate=0.5, order=primed, prefix_context=False, mixed_per_pair=0
+No chunking total hit rate: 0.008 (54/6756)
+Chunking total hit rate: 0.035 (236/6756)
+  no_chunk:base 0.001 (2/1656)
+  no_chunk:mut1 0.013 (21/1656)
+  no_chunk:single 0.009 (31/3444)
+  chunk:base 0.013 (21/1656)
+  chunk:mut1 0.028 (47/1656)
+  chunk:single 0.049 (168/3444)
+
+Dataset: coqa
+Sessions: 1000
+Variant: target_rate=0.5, order=primed, prefix_context=False, mixed_per_pair=1
+No chunking total hit rate: 0.095 (875/9247)
+Chunking total hit rate: 0.188 (1743/9247)
+  no_chunk:base 0.001 (2/1656)
+  no_chunk:mixed 0.492 (814/1656)
+  no_chunk:mut1 0.013 (21/1656)
+  no_chunk:single 0.009 (38/4279)
+  chunk:base 0.013 (21/1656)
+  chunk:mixed 0.876 (1450/1656)
+  chunk:mut1 0.030 (49/1656)
+  chunk:single 0.052 (223/4279)
+
+Dataset: coqa
+Sessions: 800
+Variant: target_rate=0.5, order=primed, prefix_context=True, mixed_per_pair=0
+No chunking total hit rate: 0.040 (269/6708)
+Chunking total hit rate: 0.090 (605/6708)
+  no_chunk:base 0.000 (0/1656)
+  no_chunk:mut1 0.158 (262/1656)
+  no_chunk:single 0.002 (7/3396)
+  chunk:base 0.030 (50/1656)
+  chunk:mut1 0.275 (455/1656)
+  chunk:single 0.029 (100/3396)
+
+Dataset: coqa
+Sessions: 1000
+Variant: target_rate=0.5, order=primed, prefix_context=True, mixed_per_pair=1
+No chunking total hit rate: 0.029 (271/9238)
+Chunking total hit rate: 0.067 (619/9238)
+  no_chunk:base 0.000 (0/1656)
+  no_chunk:mixed 0.001 (1/1656)
+  no_chunk:mut1 0.158 (262/1656)
+  no_chunk:single 0.002 (8/4270)
+  chunk:base 0.030 (50/1656)
+  chunk:mixed 0.001 (1/1656)
+  chunk:mut1 0.275 (455/1656)
+  chunk:single 0.026 (113/4270)
+
+Dataset: coqa
+Sessions: 1000
+Variant: target_rate=0.5, order=shuffle, prefix_context=False, mixed_per_pair=1
+No chunking total hit rate: 0.097 (892/9219)
+Chunking total hit rate: 0.193 (1779/9219)
+  no_chunk:base 0.315 (522/1656)
+  no_chunk:mixed 0.197 (327/1656)
+  no_chunk:mut1 0.011 (18/1656)
+  no_chunk:single 0.006 (25/4251)
+  chunk:base 0.541 (896/1656)
+  chunk:mixed 0.395 (654/1656)
+  chunk:mut1 0.029 (48/1656)
+  chunk:single 0.043 (181/4251)
+
+Dataset: coqa
+Sessions: 1300
+Variant: target_rate=0.3, order=primed, prefix_context=False, mixed_per_pair=1
+No chunking total hit rate: 0.075 (884/11745)
+Chunking total hit rate: 0.163 (1918/11745)
+  no_chunk:base 0.001 (2/1656)
+  no_chunk:mixed 0.486 (804/1656)
+  no_chunk:mut1 0.013 (21/1656)
+  no_chunk:single 0.008 (57/6777)
+  chunk:base 0.013 (21/1656)
+  chunk:mixed 0.888 (1470/1656)
+  chunk:mut1 0.029 (48/1656)
+  chunk:single 0.056 (379/6777)
+
+Dataset: coqa
+Sessions: 714
+Variant: target_rate=0.7, order=primed, prefix_context=False, mixed_per_pair=1
+No chunking total hit rate: 0.129 (874/6775)
+Chunking total hit rate: 0.239 (1621/6775)
+  no_chunk:base 0.001 (2/1656)
+  no_chunk:mixed 0.510 (844/1656)
+  no_chunk:mut1 0.013 (21/1656)
+  no_chunk:single 0.004 (7/1807)
+  chunk:base 0.013 (21/1656)
+  chunk:mixed 0.891 (1476/1656)
+  chunk:mut1 0.030 (50/1656)
+  chunk:single 0.041 (74/1807)
+
+Dataset: squad_v2
+Sessions: 800
+Variant: target_rate=0.5, order=primed, prefix_context=False, mixed_per_pair=0
+No chunking total hit rate: 0.031 (146/4718)
+Chunking total hit rate: 0.076 (358/4718)
+  no_chunk:base 0.000 (0/1193)
+  no_chunk:mut1 0.122 (146/1193)
+  no_chunk:single 0.000 (0/2332)
+  chunk:base 0.054 (65/1193)
+  chunk:mut1 0.158 (189/1193)
+  chunk:single 0.045 (104/2332)
+
+Dataset: squad_v2
+Sessions: 1000
+Variant: target_rate=0.5, order=primed, prefix_context=False, mixed_per_pair=1
+No chunking total hit rate: 0.109 (717/6583)
+Chunking total hit rate: 0.225 (1478/6583)
+  no_chunk:base 0.000 (0/1193)
+  no_chunk:mixed 0.478 (570/1193)
+  no_chunk:mut1 0.122 (146/1193)
+  no_chunk:single 0.000 (1/3004)
+  chunk:base 0.054 (65/1193)
+  chunk:mixed 0.893 (1065/1193)
+  chunk:mut1 0.158 (189/1193)
+  chunk:single 0.053 (159/3004)
+
+Dataset: squad_v2
+Sessions: 800
+Variant: target_rate=0.5, order=primed, prefix_context=True, mixed_per_pair=0
+No chunking total hit rate: 0.031 (148/4754)
+Chunking total hit rate: 0.068 (324/4754)
+  no_chunk:base 0.000 (0/1193)
+  no_chunk:mut1 0.124 (148/1193)
+  no_chunk:single 0.000 (0/2368)
+  chunk:base 0.038 (45/1193)
+  chunk:mut1 0.158 (189/1193)
+  chunk:single 0.038 (90/2368)
+
+Dataset: squad_v2
+Sessions: 1000
+Variant: target_rate=0.5, order=primed, prefix_context=True, mixed_per_pair=1
+No chunking total hit rate: 0.084 (552/6592)
+Chunking total hit rate: 0.144 (948/6592)
+  no_chunk:base 0.000 (0/1193)
+  no_chunk:mixed 0.339 (404/1193)
+  no_chunk:mut1 0.124 (148/1193)
+  no_chunk:single 0.000 (0/3013)
+  chunk:base 0.038 (45/1193)
+  chunk:mixed 0.497 (593/1193)
+  chunk:mut1 0.158 (189/1193)
+  chunk:single 0.040 (121/3013)
+
+Resume run: 2026-02-11 03:25:29
+Dataset: squad_v2
+Sessions: 1000
+Variant: target_rate=0.5, order=shuffle, prefix_context=False, mixed_per_pair=1
+No chunking total hit rate: 0.112 (733/6518)
+Chunking total hit rate: 0.222 (1445/6518)
+  no_chunk:base 0.276 (329/1193)
+  no_chunk:mixed 0.271 (323/1193)
+  no_chunk:mut1 0.068 (81/1193)
+  no_chunk:single 0.000 (0/2939)
+  chunk:base 0.478 (570/1193)
+  chunk:mixed 0.510 (608/1193)
+  chunk:mut1 0.117 (139/1193)
+  chunk:single 0.044 (128/2939)
+
+Resume run: 2026-02-11 03:35:50
+Dataset: squad_v2
+Sessions: 1300
+Variant: target_rate=0.3, order=primed, prefix_context=False, mixed_per_pair=1
+No chunking total hit rate: 0.089 (741/8330)
+Chunking total hit rate: 0.180 (1503/8330)
+  no_chunk:base 0.000 (0/1193)
+  no_chunk:mixed 0.492 (587/1193)
+  no_chunk:mut1 0.127 (151/1193)
+  no_chunk:single 0.001 (3/4751)
+  chunk:base 0.047 (56/1193)
+  chunk:mixed 0.857 (1022/1193)
+  chunk:mut1 0.160 (191/1193)
+  chunk:single 0.049 (234/4751)
+
+Dataset: squad_v2
+Sessions: 714
+Variant: target_rate=0.7, order=primed, prefix_context=False, mixed_per_pair=1
+No chunking total hit rate: 0.153 (737/4821)
+Chunking total hit rate: 0.277 (1335/4821)
+  no_chunk:base 0.000 (0/1193)
+  no_chunk:mixed 0.490 (585/1193)
+  no_chunk:mut1 0.127 (151/1193)
+  no_chunk:single 0.001 (1/1242)
+  chunk:base 0.047 (56/1193)
+  chunk:mixed 0.873 (1041/1193)
+  chunk:mut1 0.160 (191/1193)
+  chunk:single 0.038 (47/1242)
+
