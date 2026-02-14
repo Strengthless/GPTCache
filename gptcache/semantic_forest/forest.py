@@ -108,28 +108,29 @@ class SemanticForestChunker:
     def _build_chunks(self, user_queries: Sequence[SemanticQuery]) -> List[SemanticChunk]:
         chunks: List[List[SemanticQuery]] = []
         current_chunk: List[SemanticQuery] = []
-        window_vectors: List[np.ndarray] = []
+        current_texts: List[str] = []
         for query in user_queries:
-            vector = self._semantic_vector(query.text)
             if not current_chunk:
                 current_chunk.append(query)
-                window_vectors = [vector]
+                current_texts = [query.text]
                 continue
             if len(current_chunk) >= self.max_chunk_size:
                 chunks.append(current_chunk)
                 current_chunk = [query]
-                window_vectors = [vector]
+                current_texts = [query.text]
                 continue
             current_chunk.append(query)
-            window_vectors.append(vector)
+            current_texts.append(query.text)
             if len(current_chunk) <= self.window_size:
                 continue
-            reference = self._average_vector(window_vectors[-self.window_size - 1 : -1])
-            similarity = self._cosine_similarity(reference, vector)
+            reference_text = " ".join(current_texts[-self.window_size - 1 : -1])
+            reference_vector = self._semantic_vector(reference_text)
+            vector = self._semantic_vector(query.text)
+            similarity = self._cosine_similarity(reference_vector, vector)
             if similarity < self.drift_threshold:
                 chunks.append(current_chunk[:-1])
                 current_chunk = [query]
-                window_vectors = [vector]
+                current_texts = [query.text]
         if current_chunk:
             chunks.append(current_chunk)
         return [SemanticChunk(chunk) for chunk in chunks if chunk]
@@ -142,15 +143,6 @@ class SemanticForestChunker:
             vector[hash(token) % dim] += 1.0
         norm = np.linalg.norm(vector)
         return vector / norm if norm else vector
-
-    @staticmethod
-    def _average_vector(vectors: List[np.ndarray]) -> np.ndarray:
-        if not vectors:
-            return np.zeros(1, dtype="float32")
-        stacked = np.vstack(vectors)
-        mean_vec = stacked.mean(axis=0)
-        norm = np.linalg.norm(mean_vec)
-        return mean_vec / norm if norm else mean_vec
 
     @staticmethod
     def _cosine_similarity(lhs: np.ndarray, rhs: np.ndarray) -> float:
