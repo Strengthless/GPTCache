@@ -100,6 +100,48 @@ def _parse_completed_variants(report_path: str):
                 completed.add(_variant_key(dataset, target_rate, order, prefix_context, mixed_per_pair))
     return completed
 
+
+def _primed_bounds(stats: dict):
+    by_type = stats.get("by_type", {})
+    eligible_types = {"mut1", "mut2"}
+    if "mixed" in by_type:
+        eligible_types.add("mixed")
+    total_turns = stats.get("turns", 0)
+    total_hits = stats.get("hits", 0)
+    eligible_turns = sum(by_type[t]["turns"] for t in eligible_types if t in by_type)
+    fp_hits = sum(
+        data["hits"]
+        for t, data in by_type.items()
+        if t not in eligible_types
+    )
+    max_rate = (eligible_turns / total_turns) if total_turns else 0.0
+    tp = max(total_hits - fp_hits, 0)
+    precision = tp / total_hits if total_hits else 0.0
+    recall = tp / eligible_turns if eligible_turns else 0.0
+    return max_rate, precision, recall
+
+
+def _shuffle_expected_max(stats: dict):
+    by_type = stats.get("by_type", {})
+    total_turns = stats.get("turns", 0)
+    if not total_turns:
+        return 0.0
+    has_mut2 = "mut2" in by_type
+    base_factor = 2.0 / 3.0 if has_mut2 else 0.5
+    mut1_factor = base_factor
+    mut2_factor = 2.0 / 3.0 if has_mut2 else 0.0
+    mixed_factor = 2.0 / 3.0
+    eligible = 0.0
+    if "base" in by_type:
+        eligible += by_type["base"]["turns"] * base_factor
+    if "mut1" in by_type:
+        eligible += by_type["mut1"]["turns"] * mut1_factor
+    if "mut2" in by_type:
+        eligible += by_type["mut2"]["turns"] * mut2_factor
+    if "mixed" in by_type:
+        eligible += by_type["mixed"]["turns"] * mixed_factor
+    return eligible / total_turns
+
 from gptcache.semantic_forest import (
     SemanticForestChunker,
     SemanticForestDataManager,
@@ -518,6 +560,21 @@ def main():
                     f"No chunking total hit rate: {stats_no_chunk['hit_rate']:.3f} ({stats_no_chunk['hits']}/{stats_no_chunk['turns']})",
                     f"Chunking total hit rate: {stats_chunk['hit_rate']:.3f} ({stats_chunk['hits']}/{stats_chunk['turns']})",
                 ]
+                if order == "primed":
+                    max_rate, p_nc, r_nc = _primed_bounds(stats_no_chunk)
+                    _, p_c, r_c = _primed_bounds(stats_chunk)
+                    report_lines.extend(
+                        [
+                            f"Max hit rate (primed upper bound): {max_rate:.3f}",
+                            f"no_chunk precision/recall: {p_nc:.3f}/{r_nc:.3f}",
+                            f"chunk precision/recall: {p_c:.3f}/{r_c:.3f}",
+                        ]
+                    )
+                else:
+                    expected_max = _shuffle_expected_max(stats_chunk)
+                    report_lines.append(
+                        f"Expected max hit rate (shuffle): {expected_max:.3f}"
+                    )
                 for label, stats in (("no_chunk", stats_no_chunk), ("chunk", stats_chunk)):
                     for session_type, data in sorted(stats["by_type"].items()):
                         report_lines.append(
