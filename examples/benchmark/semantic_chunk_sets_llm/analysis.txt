@@ -1,24 +1,51 @@
 Yes — the values look internally consistent and make sense given how the pipeline is constructed.
 
-What makes them “sane”:
+    What makes them “sane”:
 
-- Max hit rate (primed upper bound) increases with higher target similarity and with mixed_per_pair=1.
-Example: CoQA primed, mixed=1
-    - rate=0.3 → max 0.282
-    - rate=0.7 → max 0.489
-    That’s exactly what we expect.
-- Chunking improves recall consistently, at some precision cost.
-Example: SQuAD primed, mixed=1, rate=0.5
-    - no_chunk precision/recall: 1.000 / 0.301
-    - chunk precision/recall: 0.850 / 0.536
-    This is the expected behavior: chunking finds more true hits (higher recall), but introduces some false positives (lower precision).
-- Prefixing context generally lowers hit rate in these runs (both chunked and no‑chunk), which aligns with earlier observations. The prefix dominates
-lexical similarity and can reduce paraphrase matching consistency.
-- Shuffle “expected max” is lower than primed max, and observed hit rates remain below that ceiling.
-Example: SQuAD shuffle mixed=1
-    - expected max: 0.301
-    - chunk hit rate: 0.226
-    That is within a plausible gap.
+    - Max hit rate (primed upper bound) increases with higher target similarity and with mixed_per_pair=1.
+    Example: CoQA primed, mixed=1
+        - rate=0.3 → max 0.282
+        - rate=0.7 → max 0.489
+        That’s exactly what we expect.
+    - Chunking improves recall consistently, at some precision cost.
+    Example: SQuAD primed, mixed=1, rate=0.5
+        - no_chunk precision/recall: 1.000 / 0.301
+        - chunk precision/recall: 0.850 / 0.536
+        This is the expected behavior: chunking finds more true hits (higher recall), but introduces some false positives (lower precision).
+    - Prefixing context generally lowers hit rate in these runs (both chunked and no‑chunk), which aligns with earlier observations. The prefix dominates
+    lexical similarity and can reduce paraphrase matching consistency.
+    - Shuffle “expected max” is lower than primed max, and observed hit rates remain below that ceiling.
+    Example: SQuAD shuffle mixed=1
+        - expected max: 0.301
+        - chunk hit rate: 0.226
+        That is within a plausible gap.
 
-If you want, I can summarize the key takeaways into a short “results” section (e.g., for a paper or README), or generate a compact table comparing chunk vs
-no‑chunk and % of max achieved per variant.
+    If you want, I can summarize the key takeaways into a short “results” section (e.g., for a paper or README), or generate a compact table comparing chunk vs
+    no‑chunk and % of max achieved per variant.
+
+----
+
+Summary (SQuAD v2, primed, rate=0.5, mixed=1, sample every 500 turns):
+
+  Chunking
+
+  - Samples: 13 (turns 500 → 6500)
+  - Nodes at end: ~5041
+  - Search ms: 0.289 → 3.893
+  - Total ms: 0.612 → 7.577
+
+  No‑chunk
+
+  - Samples: 13 (turns 500 → 6500)
+  - Nodes at end: ~5767
+  - Search ms: 0.154 → 1.901
+  - Total ms: 0.374 → 3.750
+
+  Interpretation: both grow roughly linearly with cache size; chunking roughly 2× search+total time at the same turn count in this configuration, but also
+  yields higher hit rate (from earlier results).
+
+  If you want, I can:
+
+  1. plot the curves,
+  2. compute per‑node slope,
+  3. run on CoQA for comparison.
