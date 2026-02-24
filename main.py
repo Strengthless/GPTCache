@@ -54,14 +54,23 @@ test_dataset = [
     {"q": "What is the speed of light in vacuum in m/s?", "a": "299,792,458 m/s", "cacheable": True},
     {"q": "Who painted the Mona Lisa?", "a": "Leonardo da Vinci", "cacheable": True},
     {"q": "What is the largest planet in our solar system?", "a": "Jupiter", "cacheable": True},
+    {"q": "What is the atomic number of carbon?", "a": "6", "cacheable": True},
+    {"q": "Which planet is known as the Red Planet?", "a": "Mars", "cacheable": True},
+    {"q": "Who developed the theory of relativity?", "a": "Albert Einstein", "cacheable": True},
+    {"q": "What is the square root of 144?", "a": "12", "cacheable": True},
+    {"q": "What is the currency of Japan?", "a": "Yen", "cacheable": True},
 
     # ==============================================================================
     # 2. NEAR-EVERGREEN (very slow changing) — should be cached with medium-long TTL
     # ==============================================================================
     {"q": "What is the current version of the Python language as of 2025?", "a": "Python 3.13 (stable), Python 3.14 in development", "cacheable": True},
-    {"q": "Who is the current CEO of OpenAI in November 2025?", "a": "Sam Altman", "cacheable": True},  # change only every few years
+    {"q": "Who is the current CEO of OpenAI in November 2025?", "a": "Sam Altman", "cacheable": True},
     {"q": "What is the latest stable version of Kubernetes?", "a": "v1.31 (as of late 2025)", "cacheable": True},
     {"q": "Which company acquired GitHub and when?", "a": "Microsoft in 2018 (completed 2020)", "cacheable": True},
+    {"q": "Who is the current president of the United States in 2025?", "a": "Donald Trump", "cacheable": True},
+    {"q": "What is the latest stable version of Node.js (LTS)?", "a": "v20.x or v22.x depending on date", "cacheable": True},
+    {"q": "When was the last stable release of Docker Engine?", "a": "Changes monthly, but fact at a point in time", "cacheable": True},
+    {"q": "Who owns xAI as of 2025?", "a": "Elon Musk", "cacheable": True},
 
     # ==============================================================================
     # 3. TIME-SENSITIVE — MUST NOT BE CACHED
@@ -73,16 +82,23 @@ test_dataset = [
     {"q": "What are today's top headlines on Hacker News?", "a": None, "cacheable": False},
     {"q": "What is the current exchange rate EUR to JPY?", "a": None, "cacheable": False},
     {"q": "How many people have visited grok.x.ai today?", "a": None, "cacheable": False},
+    {"q": "What is the current block height of Ethereum?", "a": None, "cacheable": False},
+    {"q": "What is the latest commit on the main Linux kernel repo?", "a": None, "cacheable": False},
+    {"q": "How much did NVIDIA stock close at yesterday?", "a": None, "cacheable": False},
 
     # ==============================================================================
-    # 4. MATH / EXACT COMPUTATION — MUST NOT BE CACHED
+    # 4. MATH / EXACT COMPUTATION — MUST NOT BE CACHED (except pure facts)
     # ==============================================================================
     {"q": "What is 47 × 83?", "a": None, "cacheable": False},
     {"q": "Solve 3x + 5 = 23 for x.", "a": None, "cacheable": False},
     {"q": "What is the 19th prime number?", "a": None, "cacheable": False},
     {"q": "Calculate the determinant of [[1,2],[3,4]].", "a": None, "cacheable": False},
-    {"q": "What is sin(π/3) exactly?", "a": "√3/2", "cacheable": True},  # evergreen math fact
     {"q": "Compute 2^20.", "a": None, "cacheable": False},
+    {"q": "What is 123456789 × 987654321?", "a": None, "cacheable": False},
+    {"q": "Find the integral of x² + 2x + 1 dx.", "a": None, "cacheable": False},
+    {"q": "What is sin(π/3) exactly?", "a": "√3/2", "cacheable": True},  # pure math fact
+    {"q": "What is the value of π to 5 decimal places?", "a": "3.14159", "cacheable": True},
+    {"q": "What is Euler's identity?", "a": "e^(iπ) + 1 = 0", "cacheable": True},
 
     # ==============================================================================
     # 5. LOGICAL PUZZLES / REASONING — MUST NOT BE CACHED (high variance)
@@ -92,6 +108,8 @@ test_dataset = [
     {"q": "Three people check into a hotel room that costs $30...", "a": None, "cacheable": False},
     {"q": "There are 5 houses in a row, each of a different color...", "a": None, "cacheable": False},
     {"q": "Can you solve this Sudoku: [grid]?", "a": None, "cacheable": False},
+    {"q": "Two doors, two guards, one tells truth, one lies...", "a": None, "cacheable": False},
+    {"q": "Monty Hall problem: should you switch doors?", "a": None, "cacheable": False},  # answer is fixed but reasoning varies
 
     # ==============================================================================
     # 6. CREATIVE / OPEN-ENDED / PERSONALIZED — MUST NOT BE CACHED
@@ -102,6 +120,8 @@ test_dataset = [
     {"q": "Suggest a 7-day workout plan for a beginner who hates running.", "a": None, "cacheable": False},
     {"q": "Role-play as Elon Musk answering questions about Mars colonization.", "a": None, "cacheable": False},
     {"q": "Generate a bedtime story for a 6-year-old who loves dinosaurs.", "a": None, "cacheable": False},
+    {"q": "Write a short horror story set in an abandoned AI lab.", "a": None, "cacheable": False},
+    {"q": "Come up with a catchy slogan for a new electric scooter brand.", "a": None, "cacheable": False},
 
     # ==============================================================================
     # 7. CODE GENERATION — usually NOT cacheable (high variance)
@@ -110,7 +130,11 @@ test_dataset = [
     {"q": "Implement binary search in Rust.", "a": None, "cacheable": False},
     {"q": "Create a React component for a todo list with drag-and-drop.", "a": None, "cacheable": False},
     {"q": "Write a Docker Compose file for PostgreSQL + Redis + Nginx.", "a": None, "cacheable": False},
-    {"q": "What is the syntax for a Python list comprehension?", "a": "[expr for item in iterable if condition]", "cacheable": True},  # trivial syntax → cacheable
+    {"q": "Build a Flask app that serves a machine learning model.", "a": None, "cacheable": False},
+    {"q": "Write a regex to validate strong passwords.", "a": None, "cacheable": False},
+    {"q": "What is the syntax for a Python list comprehension?", "a": "[expr for item in iterable if condition]", "cacheable": True},
+    {"q": "How do you create a virtual environment in Python?", "a": "python -m venv myenv", "cacheable": True},
+    {"q": "What does async/await do in JavaScript?", "a": "Allows asynchronous, non-blocking code", "cacheable": True},
 
     # ==============================================================================
     # 8. TRIVIAL ONE-LINERS — perfect for exact + semantic cache hits
@@ -122,26 +146,50 @@ test_dataset = [
     {"q": "What is the time complexity of accessing a hash map?", "a": "O(1) average", "cacheable": True},
     {"q": "What does SQL stand for?", "a": "Structured Query Language", "cacheable": True},
     {"q": "What is the default port for PostgreSQL?", "a": "5432", "cacheable": True},
+    {"q": "What is the default port for MySQL?", "a": "3306", "cacheable": True},
+    {"q": "What does SSH stand for?", "a": "Secure Shell", "cacheable": True},
+    {"q": "What is the shebang line for Python scripts?", "a": "#!/usr/bin/env python3", "cacheable": True},
+    {"q": "What is the difference between == and === in JavaScript?", "a": "=== checks type too", "cacheable": True},
+    {"q": "What does CDN stand for?", "a": "Content Delivery Network", "cacheable": True},
 
     # ==============================================================================
     # 9. SEMANTIC EDGE CASES — rephrased versions of the same meaning
-    #    → Great for testing embedding similarity threshold in hybrid search
     # ==============================================================================
-    {"q": "In which city is the Eiffel Tower located?", "a": "Paris", "cacheable": True},  # same as "capital of France" semantically close
+    {"q": "In which city is the Eiffel Tower located?", "a": "Paris", "cacheable": True},
     {"q": "Tell me the capital city of the country famous for the Eiffel Tower.", "a": "Paris", "cacheable": True},
     {"q": "Python was created in what year?", "a": "1991", "cacheable": True},
     {"q": "When did Guido van Rossum release the first version of Python?", "a": "1991", "cacheable": True},
     {"q": "What is the boiling point of water at sea level in Celsius?", "a": "100°C", "cacheable": True},
     {"q": "At standard pressure, water boils at how many degrees Celsius?", "a": "100°C", "cacheable": True},
+    {"q": "Who is the author of 1984?", "a": "George Orwell", "cacheable": True},
+    {"q": "Which British writer wrote the dystopian novel about Big Brother?", "a": "George Orwell", "cacheable": True},
+    {"q": "What gas do plants use for photosynthesis?", "a": "Carbon dioxide", "cacheable": True},
+    {"q": "During photosynthesis, plants absorb which gas from the air?", "a": "Carbon dioxide", "cacheable": True},
+    {"q": "What is the hardest natural substance on Earth?", "a": "Diamond", "cacheable": True},
+    {"q": "Which mineral is ranked 10 on the Mohs hardness scale?", "a": "Diamond", "cacheable": True},
 
     # ==============================================================================
     # 10. LONG BUT EVERGREEN EXPLANATIONS — test chunking + semantic retrieval
     # ==============================================================================
-    {"q": "Explain how HTTPS works step by step including TLS handshake.", "a": """1. Client hello...""", "cacheable": True},
-    {"q": "Give a detailed explanation of how Git rebase differs from merge.", "a": """Rebase rewrites history...""", "cacheable": True},
-    {"q": "Describe the CAP theorem and its implications for distributed databases.", "a": """Consistency, Availability, Partition tolerance...""", "cacheable": True},
-]
+    {"q": "Explain how HTTPS works step by step including TLS handshake.", "a": "Detailed TLS explanation...", "cacheable": True},
+    {"q": "Give a detailed explanation of how Git rebase differs from merge.", "a": "Rebase rewrites history...", "cacheable": True},
+    {"q": "Describe the CAP theorem and its implications for distributed databases.", "a": "Consistency, Availability, Partition tolerance...", "cacheable": True},
+    {"q": "Explain the difference between TCP and UDP in depth.", "a": "TCP is connection-oriented...", "cacheable": True},
+    {"q": "How does JWT authentication work?", "a": "Header.Payload.Signature...", "cacheable": True},
+    {"q": "Explain the event loop in Node.js.", "a": "Single-threaded, non-blocking I/O...", "cacheable": True},
+    {"q": "What is REST and its six architectural constraints?", "a": "Client-server, stateless, cacheable...", "cacheable": True},
+    {"q": "Explain ACID properties in databases.", "a": "Atomicity, Consistency, Isolation, Durability", "cacheable": True},
 
+    {"q": "What is the current price of gold in USD per ounce right now?", "a": None, "cacheable": False},
+    {"q": "How much does one share of Tesla cost today?", "a": None, "cacheable": False},
+    {"q": "What is the weather like in Paris right now?", "a": None, "cacheable": False},
+    {"q": "Who is the current prime minister of the United Kingdom as of today?", "a": None, "cacheable": False},
+    {"q": "Generate a valid API key for OpenAI that expires in 24 hours.", "a": None, "cacheable": False},
+    {"q": "What is the latest block number on the Ethereum mainnet?", "a": None, "cacheable": False},
+    {"q": "Tell me today's winning lottery numbers for Powerball.", "a": None, "cacheable": False},
+    {"q": "How many people are watching this YouTube video live right now?", "a": None, "cacheable": False},
+    {"q": "Calculate the hash of this string using SHA-256: 'hello world'.", "a": None, "cacheable": False}
+]
 questions = [item["q"] for item in test_dataset]
 expected_answers = [item["a"] for item in test_dataset]           # None means should NOT be cached
 expected_cacheable = [item["cacheable"] for item in test_dataset]
@@ -164,7 +212,7 @@ def load_and_import_mock_data(cache_obj, max_pairs=None):
 print("\nSLM Classification Accuracy".center(60, "="))
 correct = 0
 for item in test_dataset:
-    answer = llm.invoke(item["q"]).strip()
+    answer = llm.invoke(item["q"]).strip().lower()
     predicted_cache = (answer == "yes")
     if predicted_cache == item["cacheable"]:
         correct += 1
@@ -174,7 +222,7 @@ print(f"SLM Accuracy: {correct}/{len(test_dataset)} → {accuracy:.1%}")
 print("=" * 60)
 
 modes = [True, False]
-cache_modes = ["all"]
+cache_modes = ["all", "selectively"]
 for hybrid_mode in modes:
     for cache_mode in cache_modes:
         print(f"\n--- {'Hybrid' if hybrid_mode else 'Dense'} Mode Performance --- Cache Mode: {cache_mode}")
@@ -222,7 +270,7 @@ for hybrid_mode in modes:
                     benchmark_hits += 1
                 else:
                     benchmark_misses += 1
-                    print(f"MISS MATCH: Q: {query[:60]}... | Got: '{answer}' | Expected: '{expected_answer}'")
+                    #print(f"MISS MATCH: Q: {query[:60]}... | Got: '{answer}' | Expected: '{expected_answer}'")
             except Exception as e:
                 print(f"ERROR on query: {query}\n{e}")
                 benchmark_failures += 1
@@ -257,7 +305,7 @@ for hybrid_mode in modes:
         print(f"Raw Cache Hit Rate: {cache_hits}/{len(test_dataset)} ({cache_hits/len(test_dataset)*100:.1f}%)")
         print(f"Avg Response Time: {np.mean(total_time):.3f}s ± {np.std(total_time):.3f}s")
 
-        # Proper confusion matrix using ground truth "cacheable" label
+
         TP = sum(1 for item, (_, _, is_hit, _) in zip(test_dataset, results) if is_hit and item["cacheable"])
         TN = sum(1 for item, (_, _, is_hit, _) in zip(test_dataset, results) if not is_hit and not item["cacheable"])
         FP = sum(1 for item, (_, _, is_hit, _) in zip(test_dataset, results) if is_hit and not item["cacheable"])

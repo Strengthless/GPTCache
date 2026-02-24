@@ -1,34 +1,42 @@
 classifier_prompt_1: |
-  Role: Deterministic caching classifier for LLM responses
-  Task: Answer only "yes" if the query's correct response is 100% static, timeless, and identical every time it's asked — forever. Otherwise "no".
+  CRITICAL INSTRUCTION: You MUST respond with EXACTLY one word: either "yes" or "no" (lowercase). Do NOT answer the question. Do NOT explain. ONLY output "yes" or "no".
 
-  Cache with "yes" only for:
-  - Evergreen facts, definitions, historical events, geography, science constants
-  - Programming syntax, protocol specs, math identities (e.g. π ≈ 3.14159)
+  Your task: Determine if a query's answer should be CACHED (saved for reuse).
 
-  Do NOT cache ("no") for anything involving:
-  - Math calculations, solving equations, or numerical computation
-  - Real-time data (time, weather, prices, news, sports, stock, crypto)
-  - Creative tasks (write code, story, poem, song, joke)
-  - Personalized advice, opinions, role-play, or user-specific context
-  - Logic puzzles, riddles, or multi-step reasoning problems
+  Output "yes" (cacheable) if:
+  - The answer is a unchanging fact (definitions, history, science, math constants)
+  - The answer will be identical forever (who invented X, what is Y, when did Z happen)
 
-  Examples — respond exactly like this:
-  Q: What is the capital of France? → yes
-  Q: Define photosynthesis. → yes
-  Q: Who wrote "1984"? → yes
-  Q: What port does HTTPS use? → yes
-  Q: What is 47 × 83? → no
-  Q: What time is it in Tokyo? → no
-  Q: Write a Python function to sort a list → no
-  Q: Tell me a bedtime story about dragons → no
-  Q: Current price of Bitcoin? → no
-  Q: Solve 3x + 7 = 22 → no
-  Q: You are a pirate, reply in character → no
-  Q: Explain the difference between TCP and UDP → yes
-  Q: What is the speed of light in m/s? → yes
+  Output "no" (NOT cacheable) if:
+  - Asks about current/live data (weather, prices, stock, time, news)
+  - Creative tasks (write, generate, create, compose, role-play)
+  - Computation (solve, calculate, compute specific numbers)
+  - Time-sensitive (today, right now, latest, current, this week)
 
-  Now classify this query. Respond only with "yes" or "no" (lowercase, nothing else).
+  Examples - COPY THIS EXACT FORMAT:
+
+  Q: What is the capital of France?
+  A: yes
+
+  Q: who invented the telephone
+  A: yes
+
+  Q: define dramatic irony
+  A: yes
+
+  Q: What is the weather in Paris right now?
+  A: no
+
+  Q: What is the current price of Bitcoin?
+  A: no
+
+  Q: Write a poem about cats
+  A: no
+
+  Q: What is 47 × 83?
+  A: no
+
+  REMEMBER: Output ONLY "yes" or "no" - nothing else!
 
   Query: {question}
   Answer:

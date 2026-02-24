@@ -1,0 +1,59 @@
+# Cache Classifier Training Pipeline - Requirements
+
+# Core dependencies
+torch>=2.0.0
+transformers>=4.36.0
+datasets>=2.16.0
+accelerate>=0.25.0
+
+# Training & evaluation
+scikit-learn>=1.3.0
+numpy>=1.24.0
+scipy>=1.11.0
+
+# LLM labeling (your existing setup)
+langchain-ollama>=0.1.0
+
+# Data processing
+tqdm>=4.66.0
+pyyaml>=6.0.1
+
+# Optional: Faster tokenizers
+tokenizers>=0.15.0
+
+# Optional: For ModernBERT or specific models
+# safetensors>=0.4.0
+# einops>=0.7.0
+
+# Optional: For advanced training
+# wandb>=0.16.0  # For experiment tracking
+# tensorboard>=2.15.0  # For tensorboard logging
+
+# Optional: For ONNX export (faster CPU inference)
+# onnx>=1.15.0
+# onnxruntime>=1.16.0
+
+# Optional: For quantization
+# bitsandbytes>=0.41.0
+# optimum>=1.16.0
+
+# ============================================
+# Note on Unsloth:
+# ============================================
+# Unsloth is designed for fine-tuning decoder LLMs (Llama, Mistral, Qwen, Phi)
+# with LoRA/QLoRA, NOT for BERT-based encoder models.
+#
+# This pipeline uses HuggingFace Trainer for BERT training, which is the
+# standard and most efficient approach for sequence classification.
+#
+# If you want to use a decoder LLM approach (less efficient for classification),
+# you would install:
+# unsloth @ git+https://github.com/unslothai/unsloth.git
+# peft>=0.7.0
+# xformers>=0.0.23  # For memory-efficient attention
+#
+# And use models like:
+# - unsloth/Phi-3-mini-4k-instruct
+# - unsloth/Qwen2-1.5B-Instruct
+# - unsloth/Llama-3-8B-Instruct
+# ============================================

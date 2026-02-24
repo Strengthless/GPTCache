@@ -399,8 +399,6 @@ class SSDataManager(DataManager):
     def search(self, embedding_data, bm25=None, **kwargs):
         embedding_data = normalize(embedding_data)
         top_k = kwargs.get("top_k", -1)
-       
-        #return self.v.search(data=embedding_data, top_k=top_k)
         return self.v.search(data=embedding_data, bm25=bm25, top_k=top_k)
 
     def flush(self):

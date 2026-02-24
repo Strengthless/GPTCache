@@ -139,3 +139,12 @@ dmypy.json
 **/.chroma
 docs/references/*
 !docs/references/index.rst
+*.cwd
+*.json
+*.bin
+*.pth
+*.pt 
+*.safetensors
+*.jsonl
+models/cache_classifier/final_model/vocab.txt
+tmpclaude-6ff6-cwd
