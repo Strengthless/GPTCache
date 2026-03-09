@@ -49,3 +49,47 @@ Summary (SQuAD v2, primed, rate=0.5, mixed=1, sample every 500 turns):
   1. plot the curves,
   2. compute per‑node slope,
   3. run on CoQA for comparison.
+
+---
+Here are concrete recommendations grounded in your results across hit rate, precision/recall, and speed/scalability.
+
+1) Favor chunking when cache hit rate matters
+
+- Chunking consistently raises recall (≈1.5–2×) and improves overall hit rate (often ~2×).
+- Precision drops but remains acceptable in many configurations (e.g., SQuAD primed mixed=1: 0.85 precision / 0.54 recall).
+- Recommendation: Use chunking for cache‑heavy workflows, but tighten thresholds if false positives are costly.
+
+2) Avoid context prefixing (at least with current heuristic)
+
+- Prefixing context reduces hit rates across both datasets and both modes.
+- Likely because the chunker’s cheap lexical similarity becomes dominated by the prefix and masks paraphrase similarity.
+- Recommendation: Keep prefix_context off unless you switch to a semantic chunker or re‑tune thresholds.
+
+3) Include mixed sessions only if you want to demonstrate chunking benefits
+
+- mixed_per_pair=1 increases the max possible hit rate, and chunking captures a large fraction of it.
+- But it also amplifies false positives if ordering isn’t controlled.
+- Recommendation: use mixed sessions for stress tests and “best‑case benefit” demos, but report a non‑mixed baseline too.
+
+4) Primed order is best‑case, shuffle is realistic
+
+- Primed gives the highest attainable hit rate and clean upper bounds.
+- Shuffle reduces hit rate; chunking still helps, but less.
+- Recommendation: report both to show best‑case and realistic performance.
+
+5) Speed/scalability: chunking costs ~2× search+total time
+
+- At ~6.5k turns:
+    - chunking total time ~7.6 ms/turn
+    - no‑chunk total time ~3.8 ms/turn
+- This is expected because chunking searches deeper trees and creates more nodes per query.
+- Recommendation: if latency is tight, consider:
+    1. lower vector_dim or
+    2. higher node_match_threshold (fewer matches to traverse), or
+    3. smaller max_chunk_size (shallower paths).
+
+6) Practical “best trade‑off” settings (based on your current data)
+
+- mixed_per_pair=1, order=primed, prefix_context=False
+- drift_threshold=0.35, window_size=2, max_chunk_size=4
+- This configuration shows strong recall gains without catastrophic precision loss.
