@@ -118,8 +118,8 @@ def _variant_label(record: dict) -> str:
         (0.5, "primed", True, 0): "+Prefix",
         (0.5, "primed", True, 1): "+Mixed +Prefix",
         (0.5, "shuffle", False, 1): "Shuffle order",
-        (0.3, "primed", False, 1): "Lower similarity",
-        (0.7, "primed", False, 1): "Higher similarity",
+        (0.3, "primed", False, 1): "Sparse similarity",
+        (0.7, "primed", False, 1): "Dense similarity",
     }
     if key in pretty_names:
         return pretty_names[key]
@@ -137,12 +137,24 @@ def _plot_quality(records: List[dict], out_dir: str, title_prefix: str, dpi: int
         grouped[record["dataset"]].append(record)
 
     for dataset, dataset_records in grouped.items():
+        _VARIANT_ORDER = {
+            (0.5, "primed", False, 0): 0,  # Baseline
+            (0.5, "primed", False, 1): 1,  # +Mixed
+            (0.5, "primed", True, 0): 2,   # +Prefix
+            (0.5, "primed", True, 1): 3,   # +Mixed +Prefix
+            (0.5, "shuffle", False, 1): 4,  # Shuffle order
+            (0.3, "primed", False, 1): 5,  # Sparse similarity
+            (0.7, "primed", False, 1): 6,  # Dense similarity
+        }
         dataset_records.sort(
-            key=lambda r: (
-                r.get("order", ""),
-                r.get("target_rate", 0.0),
-                int(r.get("prefix_context", False)),
-                r.get("mixed_per_pair", 0),
+            key=lambda r: _VARIANT_ORDER.get(
+                (
+                    round(float(r.get("target_rate", 0.0)), 3),
+                    r.get("order"),
+                    bool(r.get("prefix_context")),
+                    int(r.get("mixed_per_pair", 0)),
+                ),
+                99,
             )
         )
 
